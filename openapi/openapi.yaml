@@ -1,0 +1,292 @@
+openapi: 3.1.0
+info:
+  title: LMS API
+  version: 1.0.0
+  summary: API платформи онлайн-курсів
+  description: |
+    REST API платформи онлайн-курсів (LMS): каталог курсів, потоки з обмеженою кількістю місць,
+    уроки, прогрес, домашні роботи.
+
+    **Автентифікація.** Після входу сервер ставить httpOnly-cookie `lms_session`; усі захищені
+    операції позначені `cookieAuth`.
+
+    **Помилки.** Усі помилки повертаються у форматі `application/problem+json` (RFC 9457)
+    зі стабільним полем `type`. Перелік типів — у схемі `Problem`.
+
+    **Наскрізний ідентифікатор.** Кожна відповідь має заголовок `X-Request-Id`; його ж містять
+    рядки логів сервера й поле `requestId` у problem+json.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: /api
+    description: Той самий хост, що й вебзастосунок (проксі в Vite і nginx)
+tags:
+  - name: System
+    description: Службові ендпоінти для моніторингу
+paths:
+  /health:
+    get:
+      tags:
+        - System
+      operationId: getHealth
+      summary: Перевірка життєздатності
+      description: Повертає `ok`, поки процес живий. Не звертається до бази даних.
+      security: []
+      responses:
+        '200':
+          description: Процес працює
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /ready:
+    get:
+      tags:
+        - System
+      operationId: getReady
+      summary: Перевірка готовності
+      description: Повертає `ready`, якщо доступна база даних. Використовується оркестратором і Docker healthcheck.
+      security: []
+      responses:
+        '200':
+          description: Сервіс готовий приймати запити
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ready'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: lms_session
+      description: Сесійний JWT у httpOnly-cookie, який ставить `POST /auth/login`.
+  headers:
+    X-Request-Id:
+      description: Наскрізний ідентифікатор запиту (також є в логах і в `requestId` помилок).
+      schema:
+        type: string
+        examples:
+          - 3f0c1d6e-8a37-4e0b-9d3e-2a6a1c9b7f10
+  responses:
+    BadRequest:
+      description: Некоректний запит або помилка валідації (`validation`, `bad-request`).
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/X-Request-Id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: https://lms.example/problems/validation
+            title: Помилка валідації
+            status: 400
+            detail: Дані не пройшли перевірку
+            instance: /api/courses
+            requestId: 3f0c1d6e-8a37-4e0b-9d3e-2a6a1c9b7f10
+            errors:
+              - path: query.limit
+                message: Number must be less than or equal to 50
+    Unauthorized:
+      description: Потрібен вхід (`unauthorized`) або невірні облікові дані (`invalid-credentials`).
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/X-Request-Id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: https://lms.example/problems/unauthorized
+            title: Потрібна автентифікація
+            status: 401
+            instance: /api/auth/me
+            requestId: 3f0c1d6e-8a37-4e0b-9d3e-2a6a1c9b7f10
+    Forbidden:
+      description: Дію заборонено (`forbidden`, `lesson-locked`, `not-enrolled`).
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/X-Request-Id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: https://lms.example/problems/lesson-locked
+            title: Урок ще закритий
+            status: 403
+            detail: Спершу позначте пройденими попередні уроки
+            instance: /api/lessons/12
+            requestId: 3f0c1d6e-8a37-4e0b-9d3e-2a6a1c9b7f10
+    NotFound:
+      description: Ресурсу немає або він належить іншому користувачу (`not-found`).
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/X-Request-Id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: https://lms.example/problems/not-found
+            title: Ресурс не знайдено
+            status: 404
+            detail: Курс не знайдено
+            instance: /api/courses/9999
+            requestId: 3f0c1d6e-8a37-4e0b-9d3e-2a6a1c9b7f10
+    Conflict:
+      description: Запит конфліктує зі станом даних (`email-taken`, `already-enrolled`, `stream-full`, `stream-closed`, `has-later-progress`, `course-in-use`, `course-incomplete`).
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/X-Request-Id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: https://lms.example/problems/stream-full
+            title: На потоці немає вільних місць
+            status: 409
+            instance: /api/streams/5/enrollments
+            requestId: 3f0c1d6e-8a37-4e0b-9d3e-2a6a1c9b7f10
+    PayloadTooLarge:
+      description: Перевищено ліміт розміру запиту або файлу (`payload-too-large`).
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/X-Request-Id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnprocessableEntity:
+      description: Той самий `Idempotency-Key` використано з іншим запитом (`idempotency-key-reuse`).
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/X-Request-Id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: Забагато спроб; повторіть пізніше (`rate-limited`).
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/X-Request-Id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InternalError:
+      description: Внутрішня помилка сервера (`internal`). Відповідь не містить `detail` і стектрейсу.
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/X-Request-Id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ServiceUnavailable:
+      description: Залежність (база даних) недоступна (`service-unavailable`).
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/X-Request-Id'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Health:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          const: ok
+    Ready:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          const: ready
+    FieldError:
+      type: object
+      required:
+        - path
+        - message
+      properties:
+        path:
+          type: string
+          description: Шлях до поля, наприклад `body.email` або `query.limit`.
+          examples:
+            - body.email
+        message:
+          type: string
+    Problem:
+      type: object
+      description: Помилка за RFC 9457 (`application/problem+json`).
+      required:
+        - type
+        - title
+        - status
+        - instance
+        - requestId
+      properties:
+        type:
+          type: string
+          description: Стабільний ідентифікатор класу помилки. Клієнт перемикається за ним, а не за текстом.
+          enum:
+            - https://lms.example/problems/bad-request
+            - https://lms.example/problems/validation
+            - https://lms.example/problems/unauthorized
+            - https://lms.example/problems/invalid-credentials
+            - https://lms.example/problems/forbidden
+            - https://lms.example/problems/lesson-locked
+            - https://lms.example/problems/not-enrolled
+            - https://lms.example/problems/not-found
+            - https://lms.example/problems/email-taken
+            - https://lms.example/problems/already-enrolled
+            - https://lms.example/problems/stream-full
+            - https://lms.example/problems/stream-closed
+            - https://lms.example/problems/has-later-progress
+            - https://lms.example/problems/course-in-use
+            - https://lms.example/problems/course-incomplete
+            - https://lms.example/problems/idempotency-key-reuse
+            - https://lms.example/problems/payload-too-large
+            - https://lms.example/problems/rate-limited
+            - https://lms.example/problems/service-unavailable
+            - https://lms.example/problems/internal
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+          description: Пояснення для людини. Для статусу 500 відсутнє.
+        instance:
+          type: string
+          description: Шлях запиту, у якому сталася помилка.
+        requestId:
+          type: string
+          description: Збігається із заголовком `X-Request-Id` і рядками логу.
+        errors:
+          type: array
+          description: Помилки полів (для `validation`).
+          items:
+            $ref: '#/components/schemas/FieldError'
