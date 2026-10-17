@@ -9,6 +9,9 @@ const pool = createPool(config.DATABASE_URL);
 // /ready стає 503, якщо база недоступна: оркестратор не шле трафік на інстанс без БД
 const app = createApp({
   logger,
+  db: pool,
+  jwtSecret: config.JWT_SECRET,
+  cookieSecure: config.COOKIE_SECURE,
   checkReady: async () => {
     await pool.query('SELECT 1');
   },
