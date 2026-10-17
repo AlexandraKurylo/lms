@@ -1,9 +1,23 @@
 import { createApp } from './app.js';
+import { loadConfig } from './config.js';
+import { createLogger } from './shared/logger.js';
 
-const port = Number(process.env.API_PORT ?? 4000);
+const config = loadConfig();
+const logger = createLogger(config.LOG_LEVEL);
+const app = createApp({ logger });
 
-createApp().listen(port, () => {
-  // тимчасовий вивід; на кроці 05 його замінить структурований логер
-  // eslint-disable-next-line no-console
-  console.log(`API listening on :${port}`);
+const server = app.listen(config.API_PORT, () => {
+  logger.info({ port: config.API_PORT, env: config.NODE_ENV }, 'api listening');
+});
+
+function shutdown(signal: string): void {
+  logger.info({ signal }, 'shutting down');
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 10_000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('unhandledRejection', (reason) => {
+  logger.error({ err: reason }, 'unhandled rejection');
 });
