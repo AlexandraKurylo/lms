@@ -15,4 +15,8 @@ export const listCoursesQuerySchema = z.object({
   cursor: z.string().min(1).max(500).optional(),
 });
 
+export const courseIdParamsSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
 export type ListCoursesQuery = z.infer<typeof listCoursesQuerySchema>;
