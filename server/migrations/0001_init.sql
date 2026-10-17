@@ -1,0 +1,136 @@
+-- 0001_init: початкова схема LMS.
+-- Прогрес НЕ зберігається у відсотках: він обчислюється із lesson_progress,
+-- тому додавання нового уроку не робить прогрес хибним.
+
+CREATE TYPE user_role         AS ENUM ('student', 'teacher', 'admin');
+CREATE TYPE course_level      AS ENUM ('beginner', 'intermediate', 'advanced');
+CREATE TYPE course_status     AS ENUM ('draft', 'published');
+CREATE TYPE enrollment_status AS ENUM ('active', 'completed', 'cancelled');
+CREATE TYPE material_kind     AS ENUM ('video', 'article', 'file', 'link');
+
+CREATE TABLE users (
+  id            integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  email         text        NOT NULL,
+  password_hash text        NOT NULL,
+  name          text        NOT NULL CHECK (length(btrim(name)) >= 2),
+  role          user_role   NOT NULL DEFAULT 'student',
+  bio           text,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+-- email унікальний без урахування регістру
+CREATE UNIQUE INDEX users_email_key ON users (lower(email));
+CREATE INDEX users_role_idx ON users (role);
+
+CREATE TABLE topics (
+  id   integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name text NOT NULL UNIQUE
+);
+
+CREATE TABLE courses (
+  id                 integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  title              text          NOT NULL CHECK (length(btrim(title)) >= 3),
+  description        text          NOT NULL DEFAULT '',
+  language           text          NOT NULL DEFAULT 'uk' CHECK (language ~ '^[a-z]{2}$'),
+  level              course_level  NOT NULL DEFAULT 'beginner',
+  teacher_id         integer       REFERENCES users (id) ON DELETE SET NULL,
+  status             course_status NOT NULL DEFAULT 'draft',
+  -- true: наступний урок відкривається лише після позначки про попередній
+  sequential_lessons boolean       NOT NULL DEFAULT true,
+  created_at         timestamptz   NOT NULL DEFAULT now(),
+  updated_at         timestamptz   NOT NULL DEFAULT now()
+);
+CREATE INDEX courses_teacher_idx ON courses (teacher_id);
+-- каталог: сортування за назвою з тай-брейкером id (курсорна пагінація), лише опубліковані
+CREATE INDEX courses_catalog_idx ON courses (title, id) WHERE status = 'published';
+
+-- зв'язок «багато-до-багатьох»: Курс <-> Тема
+CREATE TABLE course_topics (
+  course_id integer NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+  topic_id  integer NOT NULL REFERENCES topics (id)  ON DELETE CASCADE,
+  PRIMARY KEY (course_id, topic_id)
+);
+CREATE INDEX course_topics_topic_idx ON course_topics (topic_id, course_id);
+
+CREATE TABLE lessons (
+  id            integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  course_id     integer NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+  position      integer NOT NULL CHECK (position > 0),
+  title         text    NOT NULL CHECK (length(btrim(title)) >= 2),
+  content       text    NOT NULL DEFAULT '',
+  is_free_intro boolean NOT NULL DEFAULT false,
+  has_homework  boolean NOT NULL DEFAULT false,
+  -- відкладена перевірка дозволяє міняти уроки місцями в межах однієї транзакції
+  CONSTRAINT lessons_course_position_key UNIQUE (course_id, position) DEFERRABLE INITIALLY DEFERRED
+);
+-- у курсі може бути лише один безкоштовний вступний урок
+CREATE UNIQUE INDEX lessons_one_free_intro_idx ON lessons (course_id) WHERE is_free_intro;
+
+CREATE TABLE materials (
+  id        integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  lesson_id integer       NOT NULL REFERENCES lessons (id) ON DELETE CASCADE,
+  title     text          NOT NULL CHECK (length(btrim(title)) >= 2),
+  kind      material_kind NOT NULL DEFAULT 'link',
+  url       text          NOT NULL
+);
+CREATE INDEX materials_lesson_idx ON materials (lesson_id);
+
+CREATE TABLE streams (
+  id         integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  course_id  integer     NOT NULL REFERENCES courses (id) ON DELETE CASCADE,
+  title      text        NOT NULL CHECK (length(btrim(title)) >= 2),
+  starts_on  date        NOT NULL,
+  ends_on    date        NOT NULL,
+  capacity   integer     NOT NULL CHECK (capacity > 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (ends_on >= starts_on),
+  -- потрібен для складеного зовнішнього ключа з enrollments
+  CONSTRAINT streams_id_course_key UNIQUE (id, course_id)
+);
+CREATE INDEX streams_course_idx ON streams (course_id, starts_on);
+
+-- зв'язок «багато-до-багатьох»: Студент <-> Потік через запис із датою та статусом
+CREATE TABLE enrollments (
+  id          integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  student_id  integer           NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  stream_id   integer           NOT NULL,
+  -- course_id продубльовано свідомо: складений ключ гарантує, що він збігається з курсом потоку,
+  -- а частковий унікальний індекс нижче не дає записатися на один курс двічі
+  course_id   integer           NOT NULL,
+  status      enrollment_status NOT NULL DEFAULT 'active',
+  enrolled_at timestamptz       NOT NULL DEFAULT now(),
+  CONSTRAINT enrollments_student_stream_key UNIQUE (student_id, stream_id),
+  CONSTRAINT enrollments_stream_course_fkey FOREIGN KEY (stream_id, course_id)
+    REFERENCES streams (id, course_id) ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX enrollments_one_seat_per_course_idx
+  ON enrollments (student_id, course_id)
+  WHERE status IN ('active', 'completed');
+-- підрахунок зайнятих місць потоку
+CREATE INDEX enrollments_stream_status_idx ON enrollments (stream_id, status);
+
+-- Позначки про пройдені уроки. Відсоток прогресу рахується із цієї таблиці.
+CREATE TABLE lesson_progress (
+  student_id   integer     NOT NULL REFERENCES users (id)   ON DELETE CASCADE,
+  lesson_id    integer     NOT NULL REFERENCES lessons (id) ON DELETE CASCADE,
+  completed_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (student_id, lesson_id)
+);
+CREATE INDEX lesson_progress_lesson_idx ON lesson_progress (lesson_id);
+
+-- Домашні роботи: одна на студента й урок (повторне надсилання її замінює)
+CREATE TABLE submissions (
+  id           integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  student_id   integer     NOT NULL REFERENCES users (id)   ON DELETE CASCADE,
+  lesson_id    integer     NOT NULL REFERENCES lessons (id) ON DELETE CASCADE,
+  stream_id    integer     NOT NULL REFERENCES streams (id) ON DELETE CASCADE,
+  comment      text        NOT NULL DEFAULT '',
+  file_name    text,
+  file_path    text,
+  submitted_at timestamptz NOT NULL DEFAULT now(),
+  grade        smallint    CHECK (grade BETWEEN 0 AND 100),
+  feedback     text,
+  graded_at    timestamptz,
+  CONSTRAINT submissions_student_lesson_key UNIQUE (student_id, lesson_id),
+  CHECK ((grade IS NULL) = (graded_at IS NULL))
+);
+CREATE INDEX submissions_stream_idx ON submissions (stream_id);
