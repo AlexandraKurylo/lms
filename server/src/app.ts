@@ -6,6 +6,9 @@ import { createAuthGuards } from './modules/auth/auth.guards.js';
 import { createAuthRepo } from './modules/auth/auth.repo.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { createAuthService, type PasswordHasher } from './modules/auth/auth.service.js';
+import { createCatalogRepo } from './modules/catalog/catalog.repo.js';
+import { catalogRouter } from './modules/catalog/catalog.routes.js';
+import { createCatalogService } from './modules/catalog/catalog.service.js';
 import { healthRouter } from './modules/health/health.routes.js';
 import { createTokenService } from './shared/auth/tokens.js';
 import type { Queryable } from './shared/db.js';
@@ -58,6 +61,10 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
         cookieSecure: deps.cookieSecure ?? false,
       }),
     );
+    app.use(
+      '/api',
+      catalogRouter({ service: createCatalogService({ repo: createCatalogRepo(deps.db) }) }),
+    );
   }
 
   // порядок важливий: спершу маршрути, потім 404, і останнім — обробник помилок
@@ -66,3 +73,4 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
 
   return app;
 }
+

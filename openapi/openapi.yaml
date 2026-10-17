@@ -26,6 +26,8 @@ tags:
     description: Службові ендпоінти для моніторингу
   - name: Auth
     description: Реєстрація, вхід і сесія
+  - name: Catalog
+    description: Публічний каталог курсів (доступний гостям)
 paths:
   /health:
     get:
@@ -167,6 +169,96 @@ paths:
                 $ref: '#/components/schemas/User'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /topics:
+    get:
+      tags:
+        - Catalog
+      operationId: listTopics
+      summary: Теми курсів
+      description: Усі теми для фільтра каталогу, за алфавітом.
+      security: []
+      responses:
+        '200':
+          description: Список тем
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Topic'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /courses:
+    get:
+      tags:
+        - Catalog
+      operationId: listCourses
+      summary: Каталог курсів
+      description: |
+        Опубліковані курси, відсортовані за назвою. Фільтри комбінуються через «і».
+        Пагінація курсорна (keyset): передайте `nextCursor` з попередньої відповіді як `cursor`.
+        `nextCursor: null` означає останню сторінку.
+      security: []
+      parameters:
+        - name: topic
+          in: query
+          description: Ідентифікатор теми.
+          schema:
+            type: integer
+            minimum: 1
+        - name: level
+          in: query
+          schema:
+            $ref: '#/components/schemas/Level'
+        - name: language
+          in: query
+          description: Двобуквений код мови курсу.
+          schema:
+            type: string
+            pattern: ^[a-z]{2}$
+            examples:
+              - uk
+        - name: q
+          in: query
+          description: Пошук у назві й описі (без урахування регістру).
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          description: Непрозорий курсор зі значення `nextCursor`.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Сторінка каталогу
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/InternalError'
 components:
@@ -455,3 +547,79 @@ components:
         password:
           type: string
           minLength: 1
+    Level:
+      type: string
+      enum:
+        - beginner
+        - intermediate
+        - advanced
+    Topic:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    TeacherRef:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    CourseSummary:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - level
+        - language
+        - teacher
+        - topics
+        - lessonCount
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        level:
+          $ref: '#/components/schemas/Level'
+        language:
+          type: string
+          examples:
+            - uk
+        teacher:
+          oneOf:
+            - $ref: '#/components/schemas/TeacherRef'
+            - type: 'null'
+        topics:
+          type: array
+          items:
+            type: string
+        lessonCount:
+          type: integer
+          minimum: 0
+    CourseList:
+      type: object
+      required:
+        - items
+        - nextCursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseSummary'
+        nextCursor:
+          type:
+            - string
+            - 'null'
+          description: Курсор наступної сторінки; `null` на останній сторінці.
