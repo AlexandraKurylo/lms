@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { DomainError } from '../../shared/errors.js';
 
 export interface HealthDeps {
   /** Перевіряє залежності (база даних). Кидає помилку, якщо сервіс не готовий. */
@@ -17,10 +18,10 @@ export function healthRouter(deps: HealthDeps): Router {
   router.get('/ready', async (_req, res) => {
     try {
       await deps.checkReady();
-      res.json({ status: 'ready' });
     } catch {
-      res.status(503).json({ status: 'unavailable' });
+      throw new DomainError('service-unavailable', 'Залежність недоступна');
     }
+    res.json({ status: 'ready' });
   });
 
   return router;

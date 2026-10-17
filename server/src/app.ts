@@ -3,6 +3,7 @@ import type { Express } from 'express';
 import type { Logger } from 'pino';
 import { healthRouter } from './modules/health/health.routes.js';
 import { requestContext } from './shared/http/requestContext.js';
+import { errorHandler, notFoundHandler } from './shared/problem.js';
 import { createLogger } from './shared/logger.js';
 
 export interface AppDeps {
@@ -21,6 +22,10 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
   app.use(express.json({ limit: '100kb' }));
 
   app.use('/api', healthRouter({ checkReady }));
+
+  // порядок важливий: спершу маршрути, потім 404, і останнім — обробник помилок
+  app.use(notFoundHandler);
+  app.use(errorHandler(logger));
 
   return app;
 }
