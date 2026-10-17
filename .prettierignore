@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+*.sql
+package-lock.json
+server/uploads
+client/src/shared/api/schema.d.ts
