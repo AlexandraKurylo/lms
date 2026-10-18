@@ -7,8 +7,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "tsx watch --env-file=../.env src/server.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "dev": "prisma generate && tsx watch --env-file=../.env src/server.ts",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -16,12 +16,21 @@
     "format:check": "prettier --check ..",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:migrate": "tsx --env-file=../.env src/db/migrate.ts",
+    "pretest": "prisma generate",
+    "pretypecheck": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "dotenv -e ../.env -- prisma migrate dev",
+    "db:deploy": "dotenv -e ../.env -- prisma migrate deploy",
+    "db:reset": "dotenv -e ../.env -- prisma migrate reset --force",
     "db:seed": "tsx --env-file=../.env src/db/seed.ts",
-    "db:reset": "tsx --env-file=../.env src/db/migrate.ts --reset && tsx --env-file=../.env src/db/seed.ts",
-    "api:lint": "redocly lint ../openapi/openapi.yaml"
+    "db:studio": "dotenv -e ../.env -- prisma studio"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma",
+    "seed": "tsx --env-file=../.env src/db/seed.ts"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "express": "^5.3.0",
     "jose": "^6.2.12",
@@ -36,8 +45,10 @@
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^10.13.0",
     "prettier": "^3.9.10",
+    "prisma": "^6.19.3",
     "supertest": "^7.3.1",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
