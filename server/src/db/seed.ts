@@ -1,6 +1,7 @@
 import { pathToFileURL } from 'node:url';
 import bcrypt from 'bcryptjs';
-import pg from 'pg';
+import type { CourseLevel, MaterialKind } from '@prisma/client';
+import { createPrisma } from '../shared/db.js';
 import {
   COURSES,
   FEEDBACK_PHRASES,
@@ -12,8 +13,6 @@ import {
   TEACHER_BIOS,
   TOPICS,
 } from './seedData.js';
-
-const { Client } = pg;
 
 /** Пароль усіх демо-акаунтів. Лише для розробки: у production сид не запускається. */
 export const DEMO_PASSWORD = 'Demo12345!';
@@ -379,30 +378,7 @@ export function buildSeed(passwordHash: string, seed = 20260101): SeedData {
   };
 }
 
-// ---------- запис у базу ----------
-
-interface Column {
-  name: string;
-  type: string;
-}
-
-async function insertRows(
-  client: pg.Client,
-  table: string,
-  columns: Column[],
-  rows: unknown[][],
-  overridingIds: boolean,
-): Promise<void> {
-  if (rows.length === 0) return;
-  const params = columns.map((_, c) => rows.map((r) => r[c]));
-  const unnest = columns.map((c, i) => `$${i + 1}::${c.type}[]`).join(', ');
-  const names = columns.map((c) => c.name).join(', ');
-  const override = overridingIds ? ' OVERRIDING SYSTEM VALUE' : '';
-  await client.query(
-    `INSERT INTO ${table} (${names})${override} SELECT * FROM unnest(${unnest})`,
-    params,
-  );
-}
+// ---------- запис у базу (Prisma) ----------
 
 const SEQUENCE_TABLES = [
   'users',
@@ -415,211 +391,135 @@ const SEQUENCE_TABLES = [
   'submissions',
 ];
 
-/** Очищає таблиці й записує сид однією транзакцією: або все, або нічого. */
+/** createMany порціями: так жоден запит не впирається в ліміт параметрів PostgreSQL. */
+function chunks<T>(items: T[], size = 2000): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/**
+ * Очищає таблиці й записує сид однією транзакцією: або все, або нічого.
+ * Повторний запуск дає той самий результат (ідемпотентність): спершу TRUNCATE, потім ті самі
+ * дані з тими самими id. Явні id вставляються як є, а після цього послідовності зсуваються.
+ */
 export async function writeSeed(connectionString: string, data: SeedData): Promise<void> {
-  const client = new Client({ connectionString });
-  await client.connect();
+  const prisma = createPrisma(connectionString);
   try {
-    await client.query('BEGIN');
-    await client.query(
-      `TRUNCATE submissions, lesson_progress, enrollments, streams, materials, lessons,
-                course_topics, courses, topics, users RESTART IDENTITY CASCADE`,
-    );
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(
+          `TRUNCATE submissions, lesson_progress, enrollments, streams, materials, lessons,
+                    course_topics, courses, topics, users RESTART IDENTITY CASCADE`,
+        );
 
-    await insertRows(
-      client,
-      'topics',
-      [
-        { name: 'id', type: 'int' },
-        { name: 'name', type: 'text' },
-      ],
-      data.topics.map((t) => [t.id, t.name]),
-      true,
-    );
+        await tx.topic.createMany({ data: data.topics });
+        await tx.user.createMany({
+          data: data.users.map((u) => ({
+            id: u.id,
+            email: u.email,
+            passwordHash: u.passwordHash,
+            name: u.name,
+            role: u.role,
+            bio: u.bio,
+          })),
+        });
+        await tx.course.createMany({
+          data: data.courses.map((c) => ({
+            id: c.id,
+            title: c.title,
+            description: c.description,
+            language: c.language,
+            level: c.level as CourseLevel,
+            teacherId: c.teacherId,
+            status: c.status,
+            sequentialLessons: c.sequential,
+          })),
+        });
+        await tx.courseTopic.createMany({ data: data.courseTopics });
+        await tx.lesson.createMany({
+          data: data.lessons.map((l) => ({
+            id: l.id,
+            courseId: l.courseId,
+            position: l.position,
+            title: l.title,
+            content: l.content,
+            isFreeIntro: l.freeIntro,
+            hasHomework: l.homework,
+          })),
+        });
+        await tx.material.createMany({
+          data: data.materials.map((m) => ({
+            id: m.id,
+            lessonId: m.lessonId,
+            title: m.title,
+            kind: m.kind as MaterialKind,
+            url: m.url,
+          })),
+        });
+        await tx.stream.createMany({
+          data: data.streams.map((s) => ({
+            id: s.id,
+            courseId: s.courseId,
+            title: s.title,
+            startsOn: new Date(s.startsOn),
+            endsOn: new Date(s.endsOn),
+            capacity: s.capacity,
+          })),
+        });
+        for (const part of chunks(data.enrollments)) {
+          await tx.enrollment.createMany({
+            data: part.map((e) => ({
+              id: e.id,
+              studentId: e.studentId,
+              streamId: e.streamId,
+              courseId: e.courseId,
+              status: e.status,
+              enrolledAt: new Date(e.enrolledAt),
+            })),
+          });
+        }
+        for (const part of chunks(data.progress)) {
+          await tx.lessonProgress.createMany({
+            data: part.map((p) => ({
+              studentId: p.studentId,
+              lessonId: p.lessonId,
+              completedAt: new Date(p.completedAt),
+            })),
+          });
+        }
+        for (const part of chunks(data.submissions)) {
+          await tx.submission.createMany({
+            data: part.map((s) => ({
+              id: s.id,
+              studentId: s.studentId,
+              lessonId: s.lessonId,
+              streamId: s.streamId,
+              comment: s.comment,
+              submittedAt: new Date(s.submittedAt),
+              grade: s.grade,
+              feedback: s.feedback,
+              gradedAt: s.gradedAt === null ? null : new Date(s.gradedAt),
+            })),
+          });
+        }
 
-    await insertRows(
-      client,
-      'users',
-      [
-        { name: 'id', type: 'int' },
-        { name: 'email', type: 'text' },
-        { name: 'password_hash', type: 'text' },
-        { name: 'name', type: 'text' },
-        { name: 'role', type: 'user_role' },
-        { name: 'bio', type: 'text' },
-      ],
-      data.users.map((u) => [u.id, u.email, u.passwordHash, u.name, u.role, u.bio]),
-      true,
+        // після вставки з явними id послідовності треба зсунути, інакше наступний INSERT дасть дубль
+        for (const table of SEQUENCE_TABLES) {
+          await tx.$queryRawUnsafe(
+            `SELECT setval(pg_get_serial_sequence('${table}', 'id'), (SELECT COALESCE(MAX(id), 1) FROM ${table}))`,
+          );
+        }
+      },
+      // сид великий: стандартних 5 секунд інтерактивної транзакції не вистачить
+      { timeout: 120_000, maxWait: 10_000 },
     );
-
-    await insertRows(
-      client,
-      'courses',
-      [
-        { name: 'id', type: 'int' },
-        { name: 'title', type: 'text' },
-        { name: 'description', type: 'text' },
-        { name: 'language', type: 'text' },
-        { name: 'level', type: 'course_level' },
-        { name: 'teacher_id', type: 'int' },
-        { name: 'status', type: 'course_status' },
-        { name: 'sequential_lessons', type: 'boolean' },
-      ],
-      data.courses.map((c) => [
-        c.id,
-        c.title,
-        c.description,
-        c.language,
-        c.level,
-        c.teacherId,
-        c.status,
-        c.sequential,
-      ]),
-      true,
-    );
-
-    await insertRows(
-      client,
-      'course_topics',
-      [
-        { name: 'course_id', type: 'int' },
-        { name: 'topic_id', type: 'int' },
-      ],
-      data.courseTopics.map((x) => [x.courseId, x.topicId]),
-      false,
-    );
-
-    await insertRows(
-      client,
-      'lessons',
-      [
-        { name: 'id', type: 'int' },
-        { name: 'course_id', type: 'int' },
-        { name: 'position', type: 'int' },
-        { name: 'title', type: 'text' },
-        { name: 'content', type: 'text' },
-        { name: 'is_free_intro', type: 'boolean' },
-        { name: 'has_homework', type: 'boolean' },
-      ],
-      data.lessons.map((l) => [
-        l.id,
-        l.courseId,
-        l.position,
-        l.title,
-        l.content,
-        l.freeIntro,
-        l.homework,
-      ]),
-      true,
-    );
-
-    await insertRows(
-      client,
-      'materials',
-      [
-        { name: 'id', type: 'int' },
-        { name: 'lesson_id', type: 'int' },
-        { name: 'title', type: 'text' },
-        { name: 'kind', type: 'material_kind' },
-        { name: 'url', type: 'text' },
-      ],
-      data.materials.map((m) => [m.id, m.lessonId, m.title, m.kind, m.url]),
-      true,
-    );
-
-    await insertRows(
-      client,
-      'streams',
-      [
-        { name: 'id', type: 'int' },
-        { name: 'course_id', type: 'int' },
-        { name: 'title', type: 'text' },
-        { name: 'starts_on', type: 'date' },
-        { name: 'ends_on', type: 'date' },
-        { name: 'capacity', type: 'int' },
-      ],
-      data.streams.map((s) => [s.id, s.courseId, s.title, s.startsOn, s.endsOn, s.capacity]),
-      true,
-    );
-
-    await insertRows(
-      client,
-      'enrollments',
-      [
-        { name: 'id', type: 'int' },
-        { name: 'student_id', type: 'int' },
-        { name: 'stream_id', type: 'int' },
-        { name: 'course_id', type: 'int' },
-        { name: 'status', type: 'enrollment_status' },
-        { name: 'enrolled_at', type: 'timestamptz' },
-      ],
-      data.enrollments.map((e) => [
-        e.id,
-        e.studentId,
-        e.streamId,
-        e.courseId,
-        e.status,
-        e.enrolledAt,
-      ]),
-      true,
-    );
-
-    await insertRows(
-      client,
-      'lesson_progress',
-      [
-        { name: 'student_id', type: 'int' },
-        { name: 'lesson_id', type: 'int' },
-        { name: 'completed_at', type: 'timestamptz' },
-      ],
-      data.progress.map((p) => [p.studentId, p.lessonId, p.completedAt]),
-      false,
-    );
-
-    await insertRows(
-      client,
-      'submissions',
-      [
-        { name: 'id', type: 'int' },
-        { name: 'student_id', type: 'int' },
-        { name: 'lesson_id', type: 'int' },
-        { name: 'stream_id', type: 'int' },
-        { name: 'comment', type: 'text' },
-        { name: 'submitted_at', type: 'timestamptz' },
-        { name: 'grade', type: 'smallint' },
-        { name: 'feedback', type: 'text' },
-        { name: 'graded_at', type: 'timestamptz' },
-      ],
-      data.submissions.map((s) => [
-        s.id,
-        s.studentId,
-        s.lessonId,
-        s.streamId,
-        s.comment,
-        s.submittedAt,
-        s.grade,
-        s.feedback,
-        s.gradedAt,
-      ]),
-      true,
-    );
-
-    // після вставки з явними id послідовності треба зсунути, інакше наступний INSERT дасть дубль
-    for (const table of SEQUENCE_TABLES) {
-      await client.query(
-        `SELECT setval(pg_get_serial_sequence('${table}', 'id'), (SELECT COALESCE(MAX(id), 1) FROM ${table}))`,
-      );
-    }
-    await client.query('COMMIT');
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
-    throw err;
   } finally {
-    await client.end();
+    await prisma.$disconnect();
   }
 }
 
-// Запуск із командного рядка: `npm run db:seed` або `npm run db:reset`
+// Запуск із командного рядка: `npm run db:seed`. `prisma migrate reset` викликає цей файл сам.
 const isMain =
   process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 

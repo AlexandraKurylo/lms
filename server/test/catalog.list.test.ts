@@ -3,7 +3,8 @@ import { buildSeed, writeSeed } from '../src/db/seed.js';
 import { createCatalogRepo, escapeLike } from '../src/modules/catalog/catalog.repo.js';
 import { listCoursesQuerySchema } from '../src/modules/catalog/catalog.schemas.js';
 import { createCatalogService } from '../src/modules/catalog/catalog.service.js';
-import { createPool, type Pool } from '../src/shared/db.js';
+import pg from 'pg';
+import { createPrisma } from '../src/shared/db.js';
 import { DomainError } from '../src/shared/errors.js';
 import { encodeCursor } from '../src/shared/pagination.js';
 import { parseWith } from '../src/shared/validate.js';
@@ -12,7 +13,9 @@ import { resetTestDatabase } from './helpers/testDb.js';
 const seed = buildSeed('hash');
 const published = seed.courses.filter((c) => c.status === 'published');
 
-let pool: Pool;
+const { Pool } = pg;
+let pool: pg.Pool;
+let prisma: ReturnType<typeof createPrisma>;
 let service: ReturnType<typeof createCatalogService>;
 
 const query = (raw: Record<string, unknown> = {}) =>
@@ -21,11 +24,13 @@ const query = (raw: Record<string, unknown> = {}) =>
 beforeAll(async () => {
   const url = await resetTestDatabase();
   await writeSeed(url, seed);
-  pool = createPool(url);
-  service = createCatalogService({ repo: createCatalogRepo(pool) });
+  pool = new Pool({ connectionString: url });
+  prisma = createPrisma(url);
+  service = createCatalogService({ repo: createCatalogRepo(prisma) });
 });
 afterAll(async () => {
   await pool.end();
+  await prisma.$disconnect();
 });
 
 describe('каталог курсів', () => {

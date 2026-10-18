@@ -3,7 +3,8 @@ import bcrypt from 'bcryptjs';
 import { createAuthGuards } from '../src/modules/auth/auth.guards.js';
 import { createAuthRepo } from '../src/modules/auth/auth.repo.js';
 import { createAuthService, type PasswordHasher } from '../src/modules/auth/auth.service.js';
-import { createPool, type Pool } from '../src/shared/db.js';
+import pg from 'pg';
+import { createPrisma } from '../src/shared/db.js';
 import { createTokenService } from '../src/shared/auth/tokens.js';
 import { DomainError } from '../src/shared/errors.js';
 import { resetTestDatabase } from './helpers/testDb.js';
@@ -14,7 +15,9 @@ const hasher: PasswordHasher = {
   compare: (p, h) => bcrypt.compare(p, h),
 };
 
-let pool: Pool;
+const { Pool } = pg;
+let pool: pg.Pool;
+let prisma: ReturnType<typeof createPrisma>;
 const input = { email: 'olena@example.com', password: 'Passw0rd!', name: 'Олена Коваль' };
 
 async function codeOf(promise: Promise<unknown>): Promise<string | undefined> {
@@ -27,17 +30,20 @@ async function codeOf(promise: Promise<unknown>): Promise<string | undefined> {
 }
 
 beforeAll(async () => {
-  pool = createPool(await resetTestDatabase());
+  const url = await resetTestDatabase();
+  pool = new Pool({ connectionString: url });
+  prisma = createPrisma(url);
 });
 afterAll(async () => {
   await pool.end();
+  await prisma.$disconnect();
 });
 beforeEach(async () => {
   await pool.query('TRUNCATE users RESTART IDENTITY CASCADE');
 });
 
 function setup() {
-  const repo = createAuthRepo(pool);
+  const repo = createAuthRepo(prisma);
   return { repo, service: createAuthService({ repo, hasher }) };
 }
 

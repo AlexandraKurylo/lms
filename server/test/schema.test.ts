@@ -1,7 +1,6 @@
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { runMigrations } from '../src/db/migrate.js';
-import { resetTestDatabase } from './helpers/testDb.js';
+import { applyMigrations, resetTestDatabase } from './helpers/testDb.js';
 
 const { Pool } = pg;
 
@@ -36,7 +35,7 @@ afterAll(async () => {
 
 describe('схема бази даних', () => {
   it('міграції застосовуються з нуля, а повторний запуск нічого не змінює', async () => {
-    expect(await runMigrations({ connectionString: url })).toEqual([]);
+    expect(await applyMigrations(url)).toEqual([]);
   });
 
   it('email унікальний без урахування регістру', async () => {

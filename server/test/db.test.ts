@@ -1,33 +1,30 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createPool, withTransaction, type Pool } from '../src/shared/db.js';
+import { createPrisma, type PrismaClient } from '../src/shared/db.js';
 import { resetTestDatabase } from './helpers/testDb.js';
 
-let pool: Pool;
+let prisma: PrismaClient;
 
 beforeAll(async () => {
-  pool = createPool(await resetTestDatabase());
+  prisma = createPrisma(await resetTestDatabase());
 });
 afterAll(async () => {
-  await pool.end();
+  await prisma.$disconnect();
 });
 
-async function topicCount(): Promise<number> {
-  const r = await pool.query<{ n: number }>('SELECT count(*)::int AS n FROM topics');
-  return r.rows[0]!.n;
-}
+const topicCount = () => prisma.topic.count();
 
-describe('withTransaction', () => {
+describe('prisma.$transaction', () => {
   it('фіксує зміни, якщо все пройшло', async () => {
-    await withTransaction(pool, async (tx) => {
-      await tx.query(`INSERT INTO topics (name) VALUES ('Збережена')`);
+    await prisma.$transaction(async (tx) => {
+      await tx.topic.create({ data: { name: 'Збережена' } });
     });
     expect(await topicCount()).toBe(1);
   });
 
   it('відкочує всі зміни й пробрасує помилку, якщо щось впало', async () => {
     await expect(
-      withTransaction(pool, async (tx) => {
-        await tx.query(`INSERT INTO topics (name) VALUES ('Відкочена')`);
+      prisma.$transaction(async (tx) => {
+        await tx.topic.create({ data: { name: 'Відкочена' } });
         throw new Error('boom');
       }),
     ).rejects.toThrow('boom');
@@ -35,9 +32,9 @@ describe('withTransaction', () => {
   });
 
   it('повертає значення з callback', async () => {
-    const value = await withTransaction(pool, async (tx) => {
-      const r = await tx.query<{ n: number }>('SELECT 41 + 1 AS n');
-      return r.rows[0]!.n;
+    const value = await prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ n: number }[]>`SELECT 41 + 1 AS n`;
+      return rows[0]!.n;
     });
     expect(value).toBe(42);
   });
