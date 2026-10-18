@@ -2,6 +2,8 @@ import bcrypt from 'bcryptjs';
 import express from 'express';
 import type { Express } from 'express';
 import type { Logger } from 'pino';
+import { createAdminService } from './modules/admin/admin.service.js';
+import { adminRouter } from './modules/admin/admin.routes.js';
 import { createAuthGuards } from './modules/auth/auth.guards.js';
 import { createAuthRepo } from './modules/auth/auth.repo.js';
 import { authRouter } from './modules/auth/auth.routes.js';
@@ -11,6 +13,9 @@ import { createRefreshService } from './modules/auth/refresh.service.js';
 import { createCatalogRepo } from './modules/catalog/catalog.repo.js';
 import { catalogRouter } from './modules/catalog/catalog.routes.js';
 import { createCatalogService } from './modules/catalog/catalog.service.js';
+import { createTeacherRepo } from './modules/teacher/teacher.repo.js';
+import { teacherRouter } from './modules/teacher/teacher.routes.js';
+import { createTeacherService } from './modules/teacher/teacher.service.js';
 import { healthRouter } from './modules/health/health.routes.js';
 import { createTokenService } from './shared/auth/tokens.js';
 import type { Db } from './shared/db.js';
@@ -75,6 +80,17 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
       '/api',
       catalogRouter({ service: createCatalogService({ repo: createCatalogRepo(deps.db) }) }),
     );
+    app.use(
+      '/api',
+      teacherRouter({
+        service: createTeacherService({ repo: createTeacherRepo(deps.db) }),
+        guards,
+      }),
+    );
+    app.use(
+      '/api',
+      adminRouter({ service: createAdminService({ db: deps.db }), guards }),
+    );
   }
 
   // порядок важливий: спершу маршрути, потім 404, і останнім — обробник помилок
@@ -83,5 +99,3 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
 
   return app;
 }
-
-

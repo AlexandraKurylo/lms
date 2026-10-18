@@ -26,6 +26,10 @@ tags:
     description: Службові ендпоінти для моніторингу
   - name: Auth
     description: Реєстрація, вхід і сесія
+  - name: Teacher
+    description: Кабінет викладача (лише teacher і admin)
+  - name: Admin
+    description: Дії адміністратора (лише admin)
   - name: Catalog
     description: Публічний каталог курсів (доступний гостям)
 paths:
@@ -243,6 +247,285 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Topic'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/courses:
+    get:
+      tags:
+        - Teacher
+      operationId: listOwnCourses
+      security:
+        - cookieAuth: []
+      summary: Мої курси (кабінет викладача)
+      description: |
+        Викладач бачить лише власні курси, адміністратор — усі. Студент отримує 403.
+      responses:
+        '200':
+          description: Курси
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OwnCourse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Teacher
+      operationId: createOwnCourse
+      security:
+        - cookieAuth: []
+      summary: Створити курс
+      description: |
+        Власником стає користувач із сесії. Поля `teacherId` у тілі немає, а зайві поля дають 400.
+        Новий курс — чернетка.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseInput'
+      responses:
+        '201':
+          description: Курс створено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnCourse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/courses/{id}:
+    get:
+      tags:
+        - Teacher
+      operationId: getOwnCourse
+      security:
+        - cookieAuth: []
+      summary: Мій курс
+      description: Чужий курс повертає 404, так само як неіснуючий (ADR 0013).
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      responses:
+        '200':
+          description: Курс
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnCourse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - Teacher
+      operationId: updateOwnCourse
+      security:
+        - cookieAuth: []
+      summary: Змінити курс
+      description: |
+        Частковий запис полів курсу. Статусу тут немає: публікує й знімає курси адміністратор
+        (`/admin/courses/{id}/status`). Чужий або неіснуючий курс — 404.
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseUpdate'
+      responses:
+        '200':
+          description: Курс після зміни
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnCourse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/courses/{id}/lessons:
+    post:
+      tags:
+        - Teacher
+      operationId: addOwnLesson
+      security:
+        - cookieAuth: []
+      summary: Додати урок у кінець курсу
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LessonInput'
+      responses:
+        '201':
+          description: Урок додано
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - position
+                properties:
+                  id:
+                    type: integer
+                  position:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/courses/{id}/status:
+    patch:
+      tags:
+        - Admin
+      operationId: setCourseStatus
+      security:
+        - cookieAuth: []
+      summary: Опублікувати або зняти курс з публікації
+      description: Лише адміністратор. Курс без уроків не публікується (409 `course-incomplete`).
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - draft
+                    - published
+      responses:
+        '200':
+          description: Новий статус
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - status
+                  - teacherId
+                properties:
+                  id:
+                    type: integer
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - published
+                  teacherId:
+                    type:
+                      - integer
+                      - 'null'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Курс не готовий до публікації (`course-incomplete`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/courses/{id}/teacher:
+    patch:
+      tags:
+        - Admin
+      operationId: assignCourseTeacher
+      security:
+        - cookieAuth: []
+      summary: Призначити викладача курсу
+      description: Лише адміністратор. Призначити можна тільки користувача з роллю teacher.
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - teacherId
+              properties:
+                teacherId:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Викладача призначено
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - teacherId
+                properties:
+                  id:
+                    type: integer
+                  teacherId:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
   /courses:
@@ -508,6 +791,102 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
   schemas:
+    CourseInput:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+        language:
+          type: string
+          pattern: ^[a-z]{2}$
+        level:
+          $ref: '#/components/schemas/Level'
+        sequentialLessons:
+          type: boolean
+    CourseUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+        language:
+          type: string
+          pattern: ^[a-z]{2}$
+        level:
+          $ref: '#/components/schemas/Level'
+        sequentialLessons:
+          type: boolean
+    LessonInput:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 2
+          maxLength: 200
+        content:
+          type: string
+          maxLength: 50000
+        isFreeIntro:
+          type: boolean
+        hasHomework:
+          type: boolean
+    OwnCourse:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - language
+        - level
+        - status
+        - sequentialLessons
+        - teacherId
+        - lessonCount
+        - updatedAt
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        language:
+          type: string
+        level:
+          $ref: '#/components/schemas/Level'
+        status:
+          type: string
+          enum:
+            - draft
+            - published
+        sequentialLessons:
+          type: boolean
+        teacherId:
+          type:
+            - integer
+            - 'null'
+        lessonCount:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
     Health:
       type: object
       required:
