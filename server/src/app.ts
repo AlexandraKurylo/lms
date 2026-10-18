@@ -6,6 +6,8 @@ import { createAuthGuards } from './modules/auth/auth.guards.js';
 import { createAuthRepo } from './modules/auth/auth.repo.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { createAuthService, type PasswordHasher } from './modules/auth/auth.service.js';
+import { createRefreshRepo } from './modules/auth/refresh.repo.js';
+import { createRefreshService } from './modules/auth/refresh.service.js';
 import { createCatalogRepo } from './modules/catalog/catalog.repo.js';
 import { catalogRouter } from './modules/catalog/catalog.routes.js';
 import { createCatalogService } from './modules/catalog/catalog.service.js';
@@ -49,6 +51,13 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
     const tokens = createTokenService(deps.jwtSecret);
     const guards = createAuthGuards({ tokens, repo });
     const hasher = deps.hasher ?? bcryptHasher;
+    const refresh = createRefreshService({
+      repo: createRefreshRepo(deps.db),
+      users: repo,
+      // повторне використання refresh-токена — ознака крадіжки; пишемо в лог одним рядком
+      onReuse: ({ familyId, userId }) =>
+        logger.warn({ familyId, userId }, 'refresh token reuse detected'),
+    });
 
     // користувач визначається один раз на запит, до всіх маршрутів
     app.use('/api', guards.authenticate);
@@ -56,6 +65,7 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
       '/api',
       authRouter({
         service: createAuthService({ repo, hasher }),
+        refresh,
         tokens,
         guards,
         cookieSecure: deps.cookieSecure ?? false,
@@ -73,4 +83,5 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
 
   return app;
 }
+
 

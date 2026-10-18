@@ -75,7 +75,7 @@ paths:
         - Auth
       operationId: register
       summary: Реєстрація студента
-      description: Створює обліковий запис із роллю `student` і одразу входить (ставить cookie `lms_session`). Викладачів призначає адміністратор.
+      description: Створює обліковий запис із роллю `student` і одразу входить (ставить cookie `lms_session` і `lms_refresh`). Викладачів призначає адміністратор.
       security: []
       requestBody:
         required: true
@@ -107,7 +107,7 @@ paths:
         - Auth
       operationId: login
       summary: Вхід
-      description: Перевіряє пошту й пароль і ставить httpOnly-cookie `lms_session`. Відповідь однакова для «немає такої пошти» і «хибний пароль».
+      description: Перевіряє пошту й пароль і ставить httpOnly-cookie `lms_session` (15 хвилин) та `lms_refresh` (7 днів). Refresh-токена в тілі відповіді немає. Відповідь однакова для «немає такої пошти» і «хибний пароль».
       security: []
       requestBody:
         required: true
@@ -139,7 +139,7 @@ paths:
         - Auth
       operationId: logout
       summary: Вихід
-      description: Видаляє cookie сесії. Безпечно викликати повторно.
+      description: Відкликає refresh-токени цього входу й видаляє cookie. Безпечно викликати повторно.
       security: []
       responses:
         '204':
@@ -147,6 +147,53 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/X-Request-Id'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      operationId: refreshSession
+      summary: Оновлення сесії
+      description: |
+        Обмінює refresh-токен із cookie `lms_refresh` на нову пару cookie. Кожен refresh-токен
+        дійсний рівно один раз. Якщо старий токен пред'явлено повторно, відкликається все
+        сімейство токенів цього входу (ознака крадіжки), і користувач має увійти заново.
+        Відповідь на будь-яку проблему з токеном однакова.
+      security: []
+      responses:
+        '200':
+          description: Сесію оновлено
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+            Set-Cookie:
+              $ref: '#/components/headers/Set-Cookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/logout-all:
+    post:
+      tags:
+        - Auth
+      operationId: logoutAll
+      summary: Вихід з усіх пристроїв
+      description: Відкликає всі refresh-токени користувача. Уже виданий короткий `lms_session` діє до закінчення (до 15 хвилин).
+      security:
+        - cookieAuth: []
+      responses:
+        '204':
+          description: Усі сесії завершено
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
   /auth/me:
@@ -321,7 +368,7 @@ components:
       type: apiKey
       in: cookie
       name: lms_session
-      description: Сесійний JWT у httpOnly-cookie, який ставить `POST /auth/login`.
+      description: Короткий (15 хвилин) сесійний JWT у httpOnly-cookie, який ставить `POST /auth/login`. Поновлюється через `POST /auth/refresh`.
   headers:
     X-Request-Id:
       description: Наскрізний ідентифікатор запиту (також є в логах і в `requestId` помилок).
@@ -330,7 +377,7 @@ components:
         examples:
           - 3f0c1d6e-8a37-4e0b-9d3e-2a6a1c9b7f10
     Set-Cookie:
-      description: Сесійний cookie `lms_session` (HttpOnly; SameSite=Lax; Secure у production; 7 днів).
+      description: Сесійний cookie `lms_session` (HttpOnly; SameSite=Lax; Secure у production; 15 хвилин) і `lms_refresh` (HttpOnly; SameSite=Strict; Path=/api/auth; 7 днів).
       schema:
         type: string
   responses:
