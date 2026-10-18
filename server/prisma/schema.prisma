@@ -1,6 +1,6 @@
 // Схема LMS для Prisma. Назви таблиць і колонок збігаються з міграцією (snake_case через @map/@@map).
 //
-// Чого тут НЕМАЄ, бо Prisma цього не описує (усе це живе в migration.sql):
+// Чого тут немає, бо Prisma цього не описує (усе це живе в migration.sql):
 //   - унікальний індекс users_email_key ON users (lower(email));
 //   - частковий індекс courses_catalog_idx (title, id) WHERE status = 'published';
 //   - частковий унікальний lessons_one_free_intro_idx WHERE is_free_intro;
@@ -70,6 +70,7 @@ model User {
   enrollments Enrollment[]
   progress    LessonProgress[]
   submissions Submission[]
+  refreshTokens RefreshToken[]
 
   @@index([role], map: "users_role_idx")
   @@map("users")
@@ -222,4 +223,25 @@ model Submission {
   @@unique([studentId, lessonId], map: "submissions_student_lesson_key")
   @@index([streamId], map: "submissions_stream_idx")
   @@map("submissions")
+}
+
+// Refresh-токени. У базі лежить лише sha256 токена, а не сам токен:
+// витік бази не дає готових до використання токенів.
+// Усі токени одного входу мають спільний family_id: це дозволяє відкликати їх разом.
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  familyId  String    @map("family_id") @db.Uuid
+  tokenHash String    @unique(map: "refresh_tokens_token_hash_key") @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  // коли токен обміняли на новий; повторне пред'явлення такого токена = ознака крадіжки
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([familyId], map: "refresh_tokens_family_idx")
+  @@index([userId], map: "refresh_tokens_user_idx")
+  @@map("refresh_tokens")
 }

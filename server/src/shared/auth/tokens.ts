@@ -1,8 +1,27 @@
+import { createHash, randomBytes } from 'node:crypto';
 import { SignJWT, jwtVerify } from 'jose';
 import type { Role } from '../../modules/auth/auth.types.js';
 
 export const SESSION_COOKIE = 'lms_session';
-export const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
+/** Короткий «доступ»: навіть якщо токен вкрадуть, він живе лише 15 хвилин. */
+export const SESSION_TTL_SECONDS = 15 * 60;
+
+export const REFRESH_COOKIE = 'lms_refresh';
+export const REFRESH_TTL_DAYS = 7;
+export const REFRESH_TTL_SECONDS = REFRESH_TTL_DAYS * 24 * 60 * 60;
+
+/** Refresh-токен — не JWT, а 32 випадкові байти: серверу однаково доведеться шукати його в базі. */
+export function newRefreshToken(): string {
+  return randomBytes(32).toString('base64url');
+}
+
+/**
+ * У базі зберігаємо sha256 токена. Для паролів швидкий хеш поганий, а для токена нормальний:
+ * це 256 випадкових біт, їх неможливо перебрати, тож повільний хеш тут нічого б не додав.
+ */
+export function hashRefreshToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
 
 export interface SessionClaims {
   userId: number;
