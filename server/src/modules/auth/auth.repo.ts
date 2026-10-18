@@ -1,49 +1,29 @@
 import { DomainError } from '../../shared/errors.js';
-import type { Queryable } from '../../shared/db.js';
-import type { AuthUser, Role } from './auth.types.js';
+import { isUniqueViolation, type Db } from '../../shared/db.js';
+import type { AuthUser } from './auth.types.js';
 
 export interface UserWithHash extends AuthUser {
   passwordHash: string;
 }
 
-interface UserRow {
-  id: number;
-  email: string;
-  name: string;
-  role: Role;
-  password_hash: string;
-}
+const userSelect = { id: true, email: true, name: true, role: true } as const;
 
-const toUser = (row: UserRow): UserWithHash => ({
-  id: row.id,
-  email: row.email,
-  name: row.name,
-  role: row.role,
-  passwordHash: row.password_hash,
-});
-
-export function createAuthRepo(db: Queryable) {
+export function createAuthRepo(db: Db) {
   return {
+    /** Пошук без урахування регістру: A@x.com і a@x.com — той самий акаунт. */
     async findByEmail(email: string): Promise<UserWithHash | null> {
-      const { rows } = await db.query<UserRow>(
-        'SELECT id, email, name, role, password_hash FROM users WHERE lower(email) = lower($1)',
-        [email],
-      );
-      return rows[0] ? toUser(rows[0]) : null;
+      return db.user.findFirst({
+        where: { email: { equals: email, mode: 'insensitive' } },
+        select: { ...userSelect, passwordHash: true },
+      });
     },
 
     async findById(id: number): Promise<AuthUser | null> {
-      const { rows } = await db.query<UserRow>(
-        'SELECT id, email, name, role, password_hash FROM users WHERE id = $1',
-        [id],
-      );
-      if (!rows[0]) return null;
-      const { passwordHash: _omit, ...user } = toUser(rows[0]);
-      return user;
+      return db.user.findUnique({ where: { id }, select: userSelect });
     },
 
     /**
-     * Унікальність пошти гарантує індекс у базі, а не попередній SELECT:
+     * Унікальність пошти гарантує індекс у базі (lower(email)), а не попередній SELECT:
      * дві одночасні реєстрації не проскочать між перевіркою та вставкою.
      */
     async insertStudent(input: {
@@ -52,16 +32,17 @@ export function createAuthRepo(db: Queryable) {
       passwordHash: string;
     }): Promise<AuthUser> {
       try {
-        const { rows } = await db.query<UserRow>(
-          `INSERT INTO users (email, password_hash, name, role)
-           VALUES ($1, $2, $3, 'student')
-           RETURNING id, email, name, role, password_hash`,
-          [input.email, input.passwordHash, input.name],
-        );
-        const { passwordHash: _omit, ...user } = toUser(rows[0]!);
-        return user;
+        return await db.user.create({
+          data: {
+            email: input.email,
+            passwordHash: input.passwordHash,
+            name: input.name,
+            role: 'student',
+          },
+          select: userSelect,
+        });
       } catch (err) {
-        if ((err as { code?: string }).code === '23505') {
+        if (isUniqueViolation(err)) {
           throw new DomainError('email-taken', 'Ця пошта вже зареєстрована');
         }
         throw err;
@@ -71,3 +52,4 @@ export function createAuthRepo(db: Queryable) {
 }
 
 export type AuthRepo = ReturnType<typeof createAuthRepo>;
+

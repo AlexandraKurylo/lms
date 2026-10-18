@@ -1,19 +1,19 @@
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
-import { createPool } from './shared/db.js';
+import { createPrisma } from './shared/db.js';
 import { createLogger } from './shared/logger.js';
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL);
-const pool = createPool(config.DATABASE_URL);
+const prisma = createPrisma(config.DATABASE_URL, { log: config.PRISMA_LOG });
 // /ready стає 503, якщо база недоступна: оркестратор не шле трафік на інстанс без БД
 const app = createApp({
   logger,
-  db: pool,
+  db: prisma,
   jwtSecret: config.JWT_SECRET,
   cookieSecure: config.COOKIE_SECURE,
   checkReady: async () => {
-    await pool.query('SELECT 1');
+    await prisma.$queryRaw`SELECT 1`;
   },
 });
 
@@ -24,7 +24,7 @@ const server = app.listen(config.API_PORT, () => {
 function shutdown(signal: string): void {
   logger.info({ signal }, 'shutting down');
   server.close(() => {
-    void pool.end().finally(() => process.exit(0));
+    void prisma.$disconnect().finally(() => process.exit(0));
   });
   setTimeout(() => process.exit(1), 10_000).unref();
 }

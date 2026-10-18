@@ -1,4 +1,5 @@
-import type { Queryable } from '../../shared/db.js';
+import type { CourseLevel, Prisma } from '@prisma/client';
+import type { Db } from '../../shared/db.js';
 
 export interface CourseSummary {
   id: number;
@@ -65,69 +66,63 @@ export function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 }
 
-export function createCatalogRepo(db: Queryable) {
+export function createCatalogRepo(db: Db) {
   return {
     async listTopics(): Promise<{ id: number; name: string }[]> {
-      const { rows } = await db.query<{ id: number; name: string }>(
-        'SELECT id, name FROM topics ORDER BY name',
-      );
-      return rows;
+      return db.topic.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } });
     },
 
     /**
      * Каталог опублікованих курсів, відсортований за (title, id).
-     * Умови додаються лише ті, що задані, тому планувальник не мучиться з «$1 IS NULL OR …»,
-     * а курсорна умова `(title, id) > (…)` збігається з індексом courses_catalog_idx.
+     * Умови додаються лише ті, що задані. Курсорна умова «title більший, або title той самий
+     * і id більший» збігається з порядком індексу courses_catalog_idx (title, id).
      * Повертає до limit + 1 рядків: зайвий лише показує, що є наступна сторінка.
+     * Зв'язані дані (викладач, теми, кількість уроків) Prisma довантажує окремими запитами
+     * ПАЧКАМИ, тому кількість запитів не залежить від розміру сторінки (немає N+1).
      */
     async listPublished(filters: CourseFilters): Promise<CourseSummary[]> {
-      const where: string[] = [`c.status = 'published'`];
-      const params: unknown[] = [];
-      const add = (value: unknown): string => {
-        params.push(value);
-        return `$${params.length}`;
-      };
+      const and: Prisma.CourseWhereInput[] = [];
 
-      if (filters.topic !== undefined) {
-        where.push(
-          `EXISTS (SELECT 1 FROM course_topics ct WHERE ct.course_id = c.id AND ct.topic_id = ${add(filters.topic)})`,
-        );
-      }
-      if (filters.level !== undefined) where.push(`c.level = ${add(filters.level)}`);
-      if (filters.language !== undefined) where.push(`c.language = ${add(filters.language)}`);
+      // EXISTS: курс із двома темами не дублюється у видачі
+      if (filters.topic !== undefined) and.push({ topics: { some: { topicId: filters.topic } } });
+      if (filters.level !== undefined) and.push({ level: filters.level as CourseLevel });
+      if (filters.language !== undefined) and.push({ language: filters.language });
       if (filters.q !== undefined) {
-        const p = add(`%${escapeLike(filters.q)}%`);
-        where.push(`(c.title ILIKE ${p} OR c.description ILIKE ${p})`);
+        const pattern = escapeLike(filters.q);
+        and.push({
+          OR: [
+            { title: { contains: pattern, mode: 'insensitive' } },
+            { description: { contains: pattern, mode: 'insensitive' } },
+          ],
+        });
       }
       if (filters.after) {
-        where.push(`(c.title, c.id) > (${add(filters.after.title)}, ${add(filters.after.id)})`);
+        and.push({
+          OR: [
+            { title: { gt: filters.after.title } },
+            { title: filters.after.title, id: { gt: filters.after.id } },
+          ],
+        });
       }
-      const limit = add(filters.limit + 1);
 
-      const { rows } = await db.query<{
-        id: number;
-        title: string;
-        description: string;
-        level: string;
-        language: string;
-        teacher_id: number | null;
-        teacher_name: string | null;
-        topics: string[];
-        lesson_count: number;
-      }>(
-        `SELECT c.id, c.title, c.description, c.level, c.language,
-                u.id AS teacher_id, u.name AS teacher_name,
-                COALESCE((SELECT json_agg(t.name ORDER BY t.name)
-                            FROM course_topics ct JOIN topics t ON t.id = ct.topic_id
-                           WHERE ct.course_id = c.id), '[]'::json) AS topics,
-                (SELECT count(*)::int FROM lessons l WHERE l.course_id = c.id) AS lesson_count
-           FROM courses c
-           LEFT JOIN users u ON u.id = c.teacher_id
-          WHERE ${where.join(' AND ')}
-          ORDER BY c.title, c.id
-          LIMIT ${limit}`,
-        params,
-      );
+      const rows = await db.course.findMany({
+        where: { status: 'published', AND: and },
+        orderBy: [{ title: 'asc' }, { id: 'asc' }],
+        take: filters.limit + 1,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          level: true,
+          language: true,
+          teacher: { select: { id: true, name: true } },
+          topics: {
+            orderBy: { topic: { name: 'asc' } },
+            select: { topic: { select: { name: true } } },
+          },
+          _count: { select: { lessons: true } },
+        },
+      });
 
       return rows.map((r) => ({
         id: r.id,
@@ -135,130 +130,95 @@ export function createCatalogRepo(db: Queryable) {
         description: r.description,
         level: r.level,
         language: r.language,
-        teacher: r.teacher_id === null ? null : { id: r.teacher_id, name: r.teacher_name! },
-        topics: r.topics,
-        lessonCount: r.lesson_count,
+        teacher: r.teacher,
+        topics: r.topics.map((t) => t.topic.name),
+        lessonCount: r._count.lessons,
       }));
     },
 
     async findCourse(id: number): Promise<CourseRecord | null> {
-      const { rows } = await db.query<{
-        id: number;
-        title: string;
-        description: string;
-        level: string;
-        language: string;
-        status: 'draft' | 'published';
-        sequential_lessons: boolean;
-        teacher_id: number | null;
-        teacher_name: string | null;
-        teacher_bio: string | null;
-      }>(
-        `SELECT c.id, c.title, c.description, c.level, c.language, c.status, c.sequential_lessons,
-                c.teacher_id, u.name AS teacher_name, u.bio AS teacher_bio
-           FROM courses c LEFT JOIN users u ON u.id = c.teacher_id
-          WHERE c.id = $1`,
-        [id],
-      );
-      const r = rows[0];
-      if (!r) return null;
-      return {
-        id: r.id,
-        title: r.title,
-        description: r.description,
-        level: r.level,
-        language: r.language,
-        status: r.status,
-        sequentialLessons: r.sequential_lessons,
-        teacherId: r.teacher_id,
-        teacher:
-          r.teacher_id === null
-            ? null
-            : { id: r.teacher_id, name: r.teacher_name!, bio: r.teacher_bio },
-      };
+      const r = await db.course.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          level: true,
+          language: true,
+          status: true,
+          sequentialLessons: true,
+          teacherId: true,
+          teacher: { select: { id: true, name: true, bio: true } },
+        },
+      });
+      return r;
     },
 
     async topicsOfCourse(courseId: number): Promise<{ id: number; name: string }[]> {
-      const { rows } = await db.query<{ id: number; name: string }>(
-        `SELECT t.id, t.name FROM course_topics ct JOIN topics t ON t.id = ct.topic_id
-          WHERE ct.course_id = $1 ORDER BY t.name`,
-        [courseId],
-      );
-      return rows;
+      return db.topic.findMany({
+        where: { courses: { some: { courseId } } },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true },
+      });
     },
 
     /** Структура курсу без вмісту уроків: зміст видно всім, відкриваються уроки окремо. */
     async lessonOutline(courseId: number): Promise<LessonOutline[]> {
-      const { rows } = await db.query<{
-        id: number;
-        position: number;
-        title: string;
-        is_free_intro: boolean;
-        has_homework: boolean;
-      }>(
-        `SELECT id, position, title, is_free_intro, has_homework
-           FROM lessons WHERE course_id = $1 ORDER BY position`,
-        [courseId],
-      );
-      return rows.map((r) => ({
-        id: r.id,
-        position: r.position,
-        title: r.title,
-        isFreeIntro: r.is_free_intro,
-        hasHomework: r.has_homework,
-      }));
+      return db.lesson.findMany({
+        where: { courseId },
+        orderBy: { position: 'asc' },
+        select: { id: true, position: true, title: true, isFreeIntro: true, hasHomework: true },
+      });
     },
 
     /** Потоки з обчисленими вільними місцями: зайняті місця рахуються із записів, а не зберігаються. */
     async streamsOfCourse(courseId: number): Promise<StreamInfo[]> {
-      const { rows } = await db.query<{
-        id: number;
-        title: string;
-        starts_on: string;
-        ends_on: string;
-        capacity: number;
-        seats_taken: number;
-        phase: StreamInfo['phase'];
-      }>(
-        `SELECT s.id, s.title, to_char(s.starts_on, 'YYYY-MM-DD') AS starts_on,
-                to_char(s.ends_on, 'YYYY-MM-DD') AS ends_on, s.capacity,
-                (SELECT count(*)::int FROM enrollments e
-                  WHERE e.stream_id = s.id AND e.status IN ('active', 'completed')) AS seats_taken,
-                CASE WHEN s.ends_on < current_date THEN 'finished'
-                     WHEN s.starts_on > current_date THEN 'upcoming'
-                     ELSE 'running' END AS phase
-           FROM streams s WHERE s.course_id = $1 ORDER BY s.starts_on, s.id`,
-        [courseId],
-      );
-      return rows.map((r) => ({
-        id: r.id,
-        title: r.title,
-        startsOn: r.starts_on,
-        endsOn: r.ends_on,
-        capacity: r.capacity,
-        seatsTaken: r.seats_taken,
-        seatsLeft: Math.max(r.capacity - r.seats_taken, 0),
-        phase: r.phase,
-      }));
+      const rows = await db.stream.findMany({
+        where: { courseId },
+        orderBy: [{ startsOn: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          title: true,
+          startsOn: true,
+          endsOn: true,
+          capacity: true,
+          _count: {
+            select: { enrollments: { where: { status: { in: ['active', 'completed'] } } } },
+          },
+        },
+      });
+      const today = new Date().toISOString().slice(0, 10);
+      return rows.map((r) => {
+        const startsOn = r.startsOn.toISOString().slice(0, 10);
+        const endsOn = r.endsOn.toISOString().slice(0, 10);
+        const seatsTaken = r._count.enrollments;
+        return {
+          id: r.id,
+          title: r.title,
+          startsOn,
+          endsOn,
+          capacity: r.capacity,
+          seatsTaken,
+          seatsLeft: Math.max(r.capacity - seatsTaken, 0),
+          phase: endsOn < today ? 'finished' : startsOn > today ? 'upcoming' : 'running',
+        };
+      });
     },
 
     async findIntroLesson(courseId: number): Promise<IntroLesson | null> {
-      const lesson = await db.query<{
-        id: number;
-        position: number;
-        title: string;
-        content: string;
-      }>(
-        `SELECT id, position, title, content FROM lessons WHERE course_id = $1 AND is_free_intro`,
-        [courseId],
-      );
-      const row = lesson.rows[0];
-      if (!row) return null;
-      const materials = await db.query<{ id: number; title: string; kind: string; url: string }>(
-        'SELECT id, title, kind, url FROM materials WHERE lesson_id = $1 ORDER BY id',
-        [row.id],
-      );
-      return { ...row, materials: materials.rows };
+      return db.lesson.findFirst({
+        where: { courseId, isFreeIntro: true },
+        select: {
+          id: true,
+          position: true,
+          title: true,
+          content: true,
+          materials: {
+            orderBy: { id: 'asc' },
+            select: { id: true, title: true, kind: true, url: true },
+          },
+        },
+      });
     },
   };
 }

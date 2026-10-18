@@ -1,39 +1,26 @@
-import pg from 'pg';
-
-const { Pool } = pg;
-
-export type Pool = InstanceType<typeof Pool>;
-
-/** Те, що вміє виконувати запит: і пул, і клієнт транзакції. Репозиторії приймають саме його. */
-export interface Queryable {
-  query<R extends pg.QueryResultRow = pg.QueryResultRow>(
-    text: string,
-    values?: unknown[],
-  ): Promise<pg.QueryResult<R>>;
-}
-
-export function createPool(connectionString: string): Pool {
-  return new Pool({ connectionString, max: 10, idleTimeoutMillis: 30_000 });
-}
+import { Prisma, PrismaClient } from '@prisma/client';
 
 /**
- * Виконує `work` в одній транзакції: COMMIT, якщо все пройшло, інакше ROLLBACK і помилка летить далі.
- * Клієнт завжди повертається в пул — навіть коли сам ROLLBACK не вдався.
+ * Те, чим користуються репозиторії: звичайний клієнт АБО клієнт усередині транзакції
+ * (`prisma.$transaction(async (tx) => …)`). Репозиторії не знають, у транзакції вони чи ні.
  */
-export async function withTransaction<T>(
-  pool: Pool,
-  work: (tx: Queryable) => Promise<T>,
-): Promise<T> {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const result = await work(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
-    throw err;
-  } finally {
-    client.release();
-  }
+export type Db = PrismaClient | Prisma.TransactionClient;
+
+export interface PrismaOptions {
+  /** 'query' виводить кожен SQL у консоль: так видно N+1 (див. PRISMA_LOG у .env). */
+  log?: 'query' | 'off';
 }
+
+export function createPrisma(url: string, options: PrismaOptions = {}): PrismaClient {
+  return new PrismaClient({
+    datasourceUrl: url,
+    log: options.log === 'query' ? ['query', 'warn', 'error'] : ['warn', 'error'],
+  });
+}
+
+/** Помилка унікальності (P2002): працює і для індексів, яких Prisma не описує в схемі. */
+export function isUniqueViolation(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
+}
+
+export { Prisma, PrismaClient };

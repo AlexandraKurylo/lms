@@ -1,0 +1,225 @@
+// Схема LMS для Prisma. Назви таблиць і колонок збігаються з міграцією (snake_case через @map/@@map).
+//
+// Чого тут НЕМАЄ, бо Prisma цього не описує (усе це живе в migration.sql):
+//   - унікальний індекс users_email_key ON users (lower(email));
+//   - частковий індекс courses_catalog_idx (title, id) WHERE status = 'published';
+//   - частковий унікальний lessons_one_free_intro_idx WHERE is_free_intro;
+//   - частковий унікальний enrollments_one_seat_per_course_idx WHERE status IN ('active','completed');
+//   - DEFERRABLE INITIALLY DEFERRED для lessons_course_position_key;
+//   - усі CHECK-обмеження (довжина назв, grade 0–100, (grade IS NULL) = (graded_at IS NULL)).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  student
+  teacher
+  admin
+
+  @@map("user_role")
+}
+
+enum CourseLevel {
+  beginner
+  intermediate
+  advanced
+
+  @@map("course_level")
+}
+
+enum CourseStatus {
+  draft
+  published
+
+  @@map("course_status")
+}
+
+enum EnrollmentStatus {
+  active
+  completed
+  cancelled
+
+  @@map("enrollment_status")
+}
+
+enum MaterialKind {
+  video
+  article
+  file
+  link
+
+  @@map("material_kind")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String
+  passwordHash String   @map("password_hash")
+  name         String
+  role         UserRole @default(student)
+  bio          String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  courses     Course[]
+  enrollments Enrollment[]
+  progress    LessonProgress[]
+  submissions Submission[]
+
+  @@index([role], map: "users_role_idx")
+  @@map("users")
+}
+
+model Topic {
+  id   Int    @id @default(autoincrement())
+  name String @unique(map: "topics_name_key")
+
+  courses CourseTopic[]
+
+  @@map("topics")
+}
+
+model Course {
+  id                Int          @id @default(autoincrement())
+  title             String
+  description       String       @default("")
+  language          String       @default("uk")
+  level             CourseLevel  @default(beginner)
+  teacherId         Int?         @map("teacher_id")
+  status            CourseStatus @default(draft)
+  sequentialLessons Boolean      @default(true) @map("sequential_lessons")
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  teacher User?         @relation(fields: [teacherId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  topics  CourseTopic[]
+  lessons Lesson[]
+  streams Stream[]
+
+  @@index([teacherId], map: "courses_teacher_idx")
+  @@map("courses")
+}
+
+// Зв'язок «багато-до-багатьох»: Курс <-> Тема
+model CourseTopic {
+  courseId Int @map("course_id")
+  topicId  Int @map("topic_id")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  topic  Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([courseId, topicId])
+  @@index([topicId, courseId], map: "course_topics_topic_idx")
+  @@map("course_topics")
+}
+
+model Lesson {
+  id          Int     @id @default(autoincrement())
+  courseId    Int     @map("course_id")
+  position    Int
+  title       String
+  content     String  @default("")
+  isFreeIntro Boolean @default(false) @map("is_free_intro")
+  hasHomework Boolean @default(false) @map("has_homework")
+
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  materials   Material[]
+  progress    LessonProgress[]
+  submissions Submission[]
+
+  @@unique([courseId, position], map: "lessons_course_position_key")
+  @@map("lessons")
+}
+
+model Material {
+  id       Int          @id @default(autoincrement())
+  lessonId Int          @map("lesson_id")
+  title    String
+  kind     MaterialKind @default(link)
+  url      String
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([lessonId], map: "materials_lesson_idx")
+  @@map("materials")
+}
+
+model Stream {
+  id        Int      @id @default(autoincrement())
+  courseId  Int      @map("course_id")
+  title     String
+  startsOn  DateTime @map("starts_on") @db.Date
+  endsOn    DateTime @map("ends_on") @db.Date
+  capacity  Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  enrollments Enrollment[]
+  submissions Submission[]
+
+  // потрібен для складеного зовнішнього ключа з enrollments
+  @@unique([id, courseId], map: "streams_id_course_key")
+  @@index([courseId, startsOn], map: "streams_course_idx")
+  @@map("streams")
+}
+
+// Зв'язок «багато-до-багатьох»: Студент <-> Потік через запис із датою та статусом.
+// courseId продубльовано свідомо: складений ключ (streamId, courseId) гарантує,
+// що він збігається з курсом потоку.
+model Enrollment {
+  id         Int              @id @default(autoincrement())
+  studentId  Int              @map("student_id")
+  streamId   Int              @map("stream_id")
+  courseId   Int              @map("course_id")
+  status     EnrollmentStatus @default(active)
+  enrolledAt DateTime         @default(now()) @map("enrolled_at") @db.Timestamptz(6)
+
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  stream  Stream @relation(fields: [streamId, courseId], references: [id, courseId], onDelete: Cascade, onUpdate: NoAction, map: "enrollments_stream_course_fkey")
+
+  @@unique([studentId, streamId], map: "enrollments_student_stream_key")
+  @@index([streamId, status], map: "enrollments_stream_status_idx")
+  @@map("enrollments")
+}
+
+// Позначки про пройдені уроки. Відсоток прогресу рахується із цієї таблиці.
+model LessonProgress {
+  studentId   Int      @map("student_id")
+  lessonId    Int      @map("lesson_id")
+  completedAt DateTime @default(now()) @map("completed_at") @db.Timestamptz(6)
+
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lesson  Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([studentId, lessonId])
+  @@index([lessonId], map: "lesson_progress_lesson_idx")
+  @@map("lesson_progress")
+}
+
+// Домашні роботи: одна на студента й урок (повторне надсилання її замінює)
+model Submission {
+  id          Int       @id @default(autoincrement())
+  studentId   Int       @map("student_id")
+  lessonId    Int       @map("lesson_id")
+  streamId    Int       @map("stream_id")
+  comment     String    @default("")
+  fileName    String?   @map("file_name")
+  filePath    String?   @map("file_path")
+  submittedAt DateTime  @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  grade       Int?      @db.SmallInt
+  feedback    String?
+  gradedAt    DateTime? @map("graded_at") @db.Timestamptz(6)
+
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lesson  Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  stream  Stream @relation(fields: [streamId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([studentId, lessonId], map: "submissions_student_lesson_key")
+  @@index([streamId], map: "submissions_stream_idx")
+  @@map("submissions")
+}

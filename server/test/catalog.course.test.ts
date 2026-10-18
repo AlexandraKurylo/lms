@@ -4,7 +4,8 @@ import type { AuthUser } from '../src/modules/auth/auth.types.js';
 import { createCatalogRepo } from '../src/modules/catalog/catalog.repo.js';
 import { courseIdParamsSchema } from '../src/modules/catalog/catalog.schemas.js';
 import { createCatalogService } from '../src/modules/catalog/catalog.service.js';
-import { createPool, type Pool } from '../src/shared/db.js';
+import pg from 'pg';
+import { createPrisma } from '../src/shared/db.js';
 import { DomainError } from '../src/shared/errors.js';
 import { resetTestDatabase } from './helpers/testDb.js';
 
@@ -19,7 +20,9 @@ const asUser = (id: number, role: AuthUser['role']): AuthUser => ({
   name: `User ${id}`,
 });
 
-let pool: Pool;
+const { Pool } = pg;
+let pool: pg.Pool;
+let prisma: ReturnType<typeof createPrisma>;
 let service: ReturnType<typeof createCatalogService>;
 
 async function codeOf(promise: Promise<unknown>): Promise<string | undefined> {
@@ -34,11 +37,13 @@ async function codeOf(promise: Promise<unknown>): Promise<string | undefined> {
 beforeAll(async () => {
   const url = await resetTestDatabase();
   await writeSeed(url, seed);
-  pool = createPool(url);
-  service = createCatalogService({ repo: createCatalogRepo(pool) });
+  pool = new Pool({ connectionString: url });
+  prisma = createPrisma(url);
+  service = createCatalogService({ repo: createCatalogRepo(prisma) });
 });
 afterAll(async () => {
   await pool.end();
+  await prisma.$disconnect();
 });
 
 describe('сторінка курсу', () => {

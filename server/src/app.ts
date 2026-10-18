@@ -11,7 +11,7 @@ import { catalogRouter } from './modules/catalog/catalog.routes.js';
 import { createCatalogService } from './modules/catalog/catalog.service.js';
 import { healthRouter } from './modules/health/health.routes.js';
 import { createTokenService } from './shared/auth/tokens.js';
-import type { Queryable } from './shared/db.js';
+import type { Db } from './shared/db.js';
 import { requestContext } from './shared/http/requestContext.js';
 import { errorHandler, notFoundHandler } from './shared/problem.js';
 import { createLogger } from './shared/logger.js';
@@ -20,7 +20,7 @@ export interface AppDeps {
   logger: Logger;
   checkReady: () => Promise<void>;
   /** База даних. Без неї застосунок піднімається лише зі службовими ендпоінтами (/health, /ready). */
-  db: Queryable;
+  db: Db;
   jwtSecret: string;
   cookieSecure: boolean;
   /** Підмінюється у тестах швидшим хешером; за замовчуванням bcrypt із вартістю 10. */

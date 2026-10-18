@@ -4,6 +4,8 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  // 'query' друкує кожен SQL-запит Prisma: так шукають N+1
+  PRISMA_LOG: z.enum(['query', 'off']).default('off'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL обовʼязковий'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET має містити щонайменше 32 символи'),
   COOKIE_SECURE: z
