@@ -13,6 +13,8 @@ import { createRefreshService } from './modules/auth/refresh.service.js';
 import { createCatalogRepo } from './modules/catalog/catalog.repo.js';
 import { catalogRouter } from './modules/catalog/catalog.routes.js';
 import { createCatalogService } from './modules/catalog/catalog.service.js';
+import { createEnrollmentsService } from './modules/enrollments/enrollments.service.js';
+import { enrollmentsRouter } from './modules/enrollments/enrollments.routes.js';
 import { createTeacherRepo } from './modules/teacher/teacher.repo.js';
 import { teacherRouter } from './modules/teacher/teacher.routes.js';
 import { createTeacherService } from './modules/teacher/teacher.service.js';
@@ -26,11 +28,9 @@ import { createLogger } from './shared/logger.js';
 export interface AppDeps {
   logger: Logger;
   checkReady: () => Promise<void>;
-  /** База даних. Без неї застосунок піднімається лише зі службовими ендпоінтами (/health, /ready). */
   db: Db;
   jwtSecret: string;
   cookieSecure: boolean;
-  /** Підмінюється у тестах швидшим хешером; за замовчуванням bcrypt із вартістю 10. */
   hasher: PasswordHasher;
 }
 
@@ -39,7 +39,6 @@ const bcryptHasher: PasswordHasher = {
   compare: (password, hash) => bcrypt.compare(password, hash),
 };
 
-/** Фабрика застосунку: залежності передаються ззовні, тож тести створюють app без порту й без БД. */
 export function createApp(deps: Partial<AppDeps> = {}): Express {
   const logger = deps.logger ?? createLogger('silent');
   const checkReady = deps.checkReady ?? (async () => {});
@@ -59,12 +58,10 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
     const refresh = createRefreshService({
       repo: createRefreshRepo(deps.db),
       users: repo,
-      // повторне використання refresh-токена — ознака крадіжки; пишемо в лог одним рядком
       onReuse: ({ familyId, userId }) =>
         logger.warn({ familyId, userId }, 'refresh token reuse detected'),
     });
 
-    // користувач визначається один раз на запит, до всіх маршрутів
     app.use('/api', guards.authenticate);
     app.use(
       '/api',
@@ -91,9 +88,12 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
       '/api',
       adminRouter({ service: createAdminService({ db: deps.db }), guards }),
     );
+    app.use(
+      '/api',
+      enrollmentsRouter({ service: createEnrollmentsService({ db: deps.db }), guards }),
+    );
   }
 
-  // порядок важливий: спершу маршрути, потім 404, і останнім — обробник помилок
   app.use(notFoundHandler);
   app.use(errorHandler(logger));
 

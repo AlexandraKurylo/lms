@@ -8,7 +8,10 @@ import {
   courseIdParams,
   createCourseSchema,
   createLessonSchema,
+  createStreamSchema,
+  streamIdParams,
   updateCourseSchema,
+  updateStreamSchema,
 } from './teacher.schemas.js';
 import type { TeacherService } from './teacher.service.js';
 
@@ -55,6 +58,28 @@ export function teacherRouter(deps: {
     const { id } = parseWith(courseIdParams, req.params, 'params');
     const body = parseWith(createLessonSchema, req.body);
     res.status(201).json(await deps.service.addLesson(currentUser(req), id, body));
+  });
+
+  router.get('/teacher/courses/:id/streams', async (req, res) => {
+    const { id } = parseWith(courseIdParams, req.params, 'params');
+    res.json({ items: await deps.service.listStreams(currentUser(req), id) });
+  });
+
+  router.post('/teacher/courses/:id/streams', async (req, res) => {
+    const { id } = parseWith(courseIdParams, req.params, 'params');
+    const body = parseWith(createStreamSchema, req.body);
+    res.status(201).json(await deps.service.addStream(currentUser(req), id, body));
+  });
+
+  router.get('/teacher/streams/:id', async (req, res) => {
+    const { id } = parseWith(streamIdParams, req.params, 'params');
+    res.json(await deps.service.getStream(currentUser(req), id));
+  });
+
+  router.patch('/teacher/streams/:id', async (req, res) => {
+    const { id } = parseWith(streamIdParams, req.params, 'params');
+    const body = parseWith(updateStreamSchema, req.body);
+    res.json(await deps.service.updateStream(currentUser(req), id, body));
   });
 
   return router;

@@ -23,7 +23,6 @@ export function createAdminService(deps: { db: Db }) {
     },
 
     async assignTeacher(courseId: number, teacherId: number) {
-      // призначити можна лише існуючого користувача з роллю teacher
       const teacher = await db.user.findFirst({
         where: { id: teacherId, role: 'teacher' },
         select: { id: true },
