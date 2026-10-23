@@ -1,0 +1,7 @@
+.muted {
+  color: rgb(var(--c-hinting) / 0.6);
+}
+
+.error {
+  color: rgb(var(--c-danger-text));
+}

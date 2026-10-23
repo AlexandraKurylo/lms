@@ -1,0 +1,162 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.back {
+  align-self: flex-start;
+  font-size: 0.875rem;
+  color: rgb(var(--c-hinting) / 0.6);
+}
+
+.back:hover {
+  color: rgb(var(--c-crystal));
+}
+
+.header {
+  display: flex;
+  max-width: 48rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.lead {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: rgb(var(--c-hinting) / 0.8);
+}
+
+.introButton {
+  margin-top: 0.25rem;
+}
+
+.columns {
+  display: grid;
+  gap: 2rem;
+}
+
+@media (min-width: 900px) {
+  .columns {
+    grid-template-columns: 3fr 2fr;
+    align-items: start;
+  }
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+.lessons {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0.5rem 1rem;
+  list-style: none;
+}
+
+.lesson {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgb(var(--c-hinting) / 0.08);
+}
+
+.lesson:last-child {
+  border-bottom: none;
+}
+
+.position {
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgb(var(--c-flounce) / 0.3);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.lessonTitle {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.streams {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stream {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.streamMain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.streamSide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.seats {
+  font-weight: 600;
+  color: rgb(var(--c-crystal));
+}
+
+.full {
+  font-weight: 600;
+  color: rgb(var(--c-danger-text));
+}
+
+.muted {
+  font-size: 0.875rem;
+  color: rgb(var(--c-hinting) / 0.6);
+}
+
+.teacher {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1rem;
+}
+
+.bio {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: rgb(var(--c-hinting) / 0.75);
+}
