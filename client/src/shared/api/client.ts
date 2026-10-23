@@ -35,6 +35,20 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
+const NO_REFRESH = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'];
+
+let refreshing: Promise<boolean> | null = null;
+
+function refreshSession(): Promise<boolean> {
+  refreshing ??= fetch('/api/auth/refresh', { method: 'POST', credentials: 'same-origin' })
+    .then((res) => res.ok)
+    .catch(() => false)
+    .finally(() => {
+      refreshing = null;
+    });
+  return refreshing;
+}
+
 function codeOf(problem: Problem | null, status: number): string {
   return problem?.type.split('/').pop() ?? `http-${status}`;
 }
@@ -48,7 +62,11 @@ async function readProblem(res: Response): Promise<Problem | null> {
   }
 }
 
-export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function api<T>(
+  path: string,
+  options: RequestOptions = {},
+  retried = false,
+): Promise<T> {
   const { method = 'GET', body, signal } = options;
   let res: Response;
   try {
@@ -62,6 +80,10 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err;
     throw new ApiError(0, 'network', 'Не вдалося зв’язатися із сервером');
+  }
+
+  if (res.status === 401 && !retried && !NO_REFRESH.includes(path)) {
+    if (await refreshSession()) return api<T>(path, options, true);
   }
 
   if (!res.ok) {

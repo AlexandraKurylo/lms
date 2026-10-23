@@ -1,0 +1,29 @@
+.page {
+  display: flex;
+  justify-content: center;
+  padding-top: 1rem;
+}
+
+.card {
+  display: flex;
+  width: 100%;
+  max-width: 26rem;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 2rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.footer {
+  font-size: 0.875rem;
+  color: rgb(var(--c-hinting) / 0.6);
+}
+
+.footer a {
+  color: rgb(var(--c-crystal));
+  text-decoration: underline;
+}

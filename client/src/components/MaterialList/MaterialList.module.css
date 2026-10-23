@@ -1,0 +1,17 @@
+.title {
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.link {
+  color: rgb(var(--c-crystal));
+  text-decoration: underline;
+  text-decoration-color: rgb(var(--c-crystal) / 0.4);
+}

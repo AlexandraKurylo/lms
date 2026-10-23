@@ -74,3 +74,12 @@ export interface IntroLesson {
   content: string;
   materials: Material[];
 }
+
+export type Role = 'student' | 'teacher' | 'admin';
+
+export interface User {
+  id: number;
+  email: string;
+  name: string;
+  role: Role;
+}

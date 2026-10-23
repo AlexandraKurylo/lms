@@ -1,9 +1,15 @@
-import type { Level, StreamPhase } from '../api/types';
+import type { Level, Role, StreamPhase } from '../api/types';
 
 export const LEVEL_LABEL: Record<Level, string> = {
   beginner: 'Початковий',
   intermediate: 'Середній',
   advanced: 'Просунутий',
+};
+
+export const ROLE_LABEL: Record<Role, string> = {
+  student: 'Студент',
+  teacher: 'Викладач',
+  admin: 'Адміністратор',
 };
 
 export const PHASE_LABEL: Record<StreamPhase, string> = {

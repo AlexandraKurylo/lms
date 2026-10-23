@@ -1,0 +1,11 @@
+.text {
+  font-weight: 600;
+}
+
+.good {
+  color: rgb(var(--c-crystal));
+}
+
+.bad {
+  color: rgb(var(--c-danger-text));
+}
