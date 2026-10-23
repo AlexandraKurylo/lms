@@ -1,0 +1,11 @@
+.filters {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .filters {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+}

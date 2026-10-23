@@ -1,0 +1,9 @@
+.link {
+  align-self: flex-start;
+  font-size: 0.875rem;
+  color: rgb(var(--c-hinting) / 0.6);
+}
+
+.link:hover {
+  color: rgb(var(--c-crystal));
+}

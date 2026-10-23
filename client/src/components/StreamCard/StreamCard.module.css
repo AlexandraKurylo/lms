@@ -1,0 +1,35 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.seats {
+  font-weight: 600;
+  color: rgb(var(--c-crystal));
+}
+
+.full {
+  font-weight: 600;
+  color: rgb(var(--c-danger-text));
+}
+
+.muted {
+  font-size: 0.875rem;
+  color: rgb(var(--c-hinting) / 0.6);
+}
