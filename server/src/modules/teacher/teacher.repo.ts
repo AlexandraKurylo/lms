@@ -1,6 +1,13 @@
 import type { Db } from '../../shared/db.js';
+import { inTransaction, type Prisma } from '../../shared/db.js';
 import type { OwnerScope } from './teacher.scope.js';
-import type { CreateCourseInput, CreateLessonInput, UpdateCourseInput } from './teacher.schemas.js';
+import type {
+  CreateCourseInput,
+  CreateLessonInput,
+  CreateStreamInput,
+  UpdateCourseInput,
+  UpdateStreamInput,
+} from './teacher.schemas.js';
 
 export interface OwnCourse {
   id: number;
@@ -14,6 +21,50 @@ export interface OwnCourse {
   lessonCount: number;
   updatedAt: string;
 }
+
+export interface OwnStream {
+  id: number;
+  courseId: number;
+  title: string;
+  startsOn: string;
+  endsOn: string;
+  capacity: number;
+  seatsTaken: number;
+}
+
+export const SEAT_STATUSES: ('active' | 'completed')[] = ['active', 'completed'];
+
+const streamSelect = {
+  id: true,
+  courseId: true,
+  title: true,
+  startsOn: true,
+  endsOn: true,
+  capacity: true,
+  _count: { select: { enrollments: { where: { status: { in: SEAT_STATUSES } } } } },
+} satisfies Prisma.StreamSelect;
+
+function toOwnStream(row: {
+  id: number;
+  courseId: number;
+  title: string;
+  startsOn: Date;
+  endsOn: Date;
+  capacity: number;
+  _count: { enrollments: number };
+}): OwnStream {
+  return {
+    id: row.id,
+    courseId: row.courseId,
+    title: row.title,
+    startsOn: row.startsOn.toISOString().slice(0, 10),
+    endsOn: row.endsOn.toISOString().slice(0, 10),
+    capacity: row.capacity,
+    seatsTaken: row._count.enrollments,
+  };
+}
+
+const toDate = (iso: string): Date => new Date(`${iso}T00:00:00.000Z`);
 
 const select = {
   id: true,
@@ -94,6 +145,79 @@ export function createTeacherRepo(db: Db) {
         select: { id: true, position: true },
       });
       return lesson;
+    },
+
+
+    async listStreams(courseId: number, scope: OwnerScope): Promise<OwnStream[] | null> {
+      const course = await db.course.findFirst({ where: { id: courseId, ...scope }, select: { id: true } });
+      if (!course) return null;
+      const rows = await db.stream.findMany({
+        where: { courseId },
+        select: streamSelect,
+        orderBy: [{ startsOn: 'asc' }, { id: 'asc' }],
+      });
+      return rows.map(toOwnStream);
+    },
+
+    async addStream(
+      courseId: number,
+      scope: OwnerScope,
+      input: CreateStreamInput,
+    ): Promise<OwnStream | null> {
+      const course = await db.course.findFirst({ where: { id: courseId, ...scope }, select: { id: true } });
+      if (!course) return null;
+      const row = await db.stream.create({
+        data: {
+          courseId,
+          title: input.title,
+          startsOn: toDate(input.startsOn),
+          endsOn: toDate(input.endsOn),
+          capacity: input.capacity,
+        },
+        select: streamSelect,
+      });
+      return toOwnStream(row);
+    },
+
+    async findStream(id: number, scope: OwnerScope): Promise<OwnStream | null> {
+      const row = await db.stream.findFirst({
+        where: { id, course: { ...scope } },
+        select: streamSelect,
+      });
+      return row ? toOwnStream(row) : null;
+    },
+
+    async updateStream(
+      id: number,
+      scope: OwnerScope,
+      input: UpdateStreamInput,
+    ): Promise<OwnStream | 'not-found' | 'capacity-below-taken' | 'bad-dates'> {
+      return inTransaction(db, async (tx) => {
+        const own = await tx.stream.findFirst({ where: { id, course: { ...scope } }, select: { id: true } });
+        if (!own) return 'not-found' as const;
+
+        await tx.$queryRaw`SELECT id FROM streams WHERE id = ${id} FOR UPDATE`;
+
+        const current = await tx.stream.findUniqueOrThrow({ where: { id }, select: streamSelect });
+        const startsOn = input.startsOn ?? current.startsOn.toISOString().slice(0, 10);
+        const endsOn = input.endsOn ?? current.endsOn.toISOString().slice(0, 10);
+        if (endsOn < startsOn) return 'bad-dates' as const;
+        if (input.capacity !== undefined && input.capacity < current._count.enrollments) {
+          return 'capacity-below-taken' as const;
+        }
+
+        const row = await tx.stream.update({
+          where: { id },
+          data: {
+            ...(input.title !== undefined ? { title: input.title } : {}),
+            ...(input.startsOn !== undefined ? { startsOn: toDate(input.startsOn) } : {}),
+            ...(input.endsOn !== undefined ? { endsOn: toDate(input.endsOn) } : {}),
+            ...(input.capacity !== undefined ? { capacity: input.capacity } : {}),
+          },
+          select: streamSelect,
+        });
+        return toOwnStream(row);
+      });
     },
   };
 }
