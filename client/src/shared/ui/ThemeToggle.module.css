@@ -1,0 +1,20 @@
+.toggle {
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(var(--c-hinting) / 0.15);
+  color: rgb(var(--c-hinting));
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.toggle:hover {
+  border-color: rgb(var(--c-crystal) / 0.5);
+  color: rgb(var(--c-crystal));
+}
