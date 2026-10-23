@@ -6,7 +6,7 @@ import { createLogger } from './shared/logger.js';
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL);
 const prisma = createPrisma(config.DATABASE_URL, { log: config.PRISMA_LOG });
-// /ready стає 503, якщо база недоступна: оркестратор не шле трафік на інстанс без БД
+
 const app = createApp({
   logger,
   db: prisma,

@@ -28,6 +28,8 @@ tags:
     description: Реєстрація, вхід і сесія
   - name: Teacher
     description: Кабінет викладача (лише teacher і admin)
+  - name: Enrollments
+    description: Запис студента на потоки (лише student)
   - name: Admin
     description: Дії адміністратора (лише admin)
   - name: Catalog
@@ -641,6 +643,231 @@ paths:
                 $ref: '#/components/schemas/IntroLesson'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/courses/{id}/streams:
+    get:
+      tags:
+        - Teacher
+      operationId: listOwnStreams
+      security:
+        - cookieAuth: []
+      summary: Потоки мого курсу
+      description: Чужий курс повертає 404 (ADR 0013). `seatsTaken` рахується із записів active і completed.
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      responses:
+        '200':
+          description: Потоки курсу
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OwnStream'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Teacher
+      operationId: addOwnStream
+      security:
+        - cookieAuth: []
+      summary: Додати потік до мого курсу
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StreamInput'
+      responses:
+        '201':
+          description: Потік створено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnStream'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/streams/{id}:
+    get:
+      tags:
+        - Teacher
+      operationId: getOwnStream
+      security:
+        - cookieAuth: []
+      summary: Мій потік
+      parameters:
+        - $ref: '#/components/parameters/StreamId'
+      responses:
+        '200':
+          description: Потік
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnStream'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - Teacher
+      operationId: updateOwnStream
+      security:
+        - cookieAuth: []
+      summary: Змінити потік
+      description: |
+        Частковий запис полів. Зміна виконується під тим самим блокуванням рядка потоку, що й запис
+        студентів, тому `capacity` не можна зробити меншою за кількість уже зайнятих місць
+        (409 `stream-full`).
+      parameters:
+        - $ref: '#/components/parameters/StreamId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StreamUpdate'
+      responses:
+        '200':
+          description: Потік оновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnStream'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /streams/{id}/enrollments:
+    post:
+      tags:
+        - Enrollments
+      operationId: enroll
+      security:
+        - cookieAuth: []
+      summary: Записатися на потік
+      description: |
+        Лише студент. Виконується в одній транзакції з блокуванням рядка потоку (`FOR UPDATE`, ADR 0004):
+        при одночасних запитах на останнє місце рівно один отримає 201, решта — 409 `stream-full`.
+        Потік неопублікованого курсу виглядає як неіснуючий (404).
+        Помилки 409: `stream-full` (місць немає), `stream-closed` (потік завершився),
+        `already-enrolled` (студент уже записаний на цей курс).
+      parameters:
+        - $ref: '#/components/parameters/StreamId'
+      responses:
+        '201':
+          description: Запис створено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/enrollments:
+    get:
+      tags:
+        - Enrollments
+      operationId: listMyEnrollments
+      security:
+        - cookieAuth: []
+      summary: Мої записи
+      responses:
+        '200':
+          description: Записи поточного студента, нові першими
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MyEnrollment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /me/enrollments/{id}:
+    delete:
+      tags:
+        - Enrollments
+      operationId: cancelMyEnrollment
+      security:
+        - cookieAuth: []
+      summary: Скасувати свій запис
+      description: Звільняє місце. Чужий, неіснуючий або вже скасований запис — 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Ідентифікатор запису.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '204':
+          description: Запис скасовано
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -1267,12 +1494,147 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Material'
+    StreamInput:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - startsOn
+        - endsOn
+        - capacity
+      properties:
+        title:
+          type: string
+        startsOn:
+          type: string
+          format: date
+        endsOn:
+          type: string
+          format: date
+          description: Не раніше за `startsOn`.
+        capacity:
+          type: integer
+          minimum: 1
+          maximum: 1000
+    StreamUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title:
+          type: string
+        startsOn:
+          type: string
+          format: date
+        endsOn:
+          type: string
+          format: date
+        capacity:
+          type: integer
+          minimum: 1
+          maximum: 1000
+    OwnStream:
+      type: object
+      required:
+        - id
+        - courseId
+        - title
+        - startsOn
+        - endsOn
+        - capacity
+        - seatsTaken
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        title:
+          type: string
+        startsOn:
+          type: string
+          format: date
+        endsOn:
+          type: string
+          format: date
+        capacity:
+          type: integer
+        seatsTaken:
+          type: integer
+          description: Зайняті місця (записи active і completed).
+    Enrollment:
+      type: object
+      required:
+        - id
+        - streamId
+        - courseId
+        - status
+        - enrolledAt
+      properties:
+        id:
+          type: integer
+        streamId:
+          type: integer
+        courseId:
+          type: integer
+        status:
+          type: string
+          enum:
+            - active
+            - completed
+            - cancelled
+        enrolledAt:
+          type: string
+          format: date-time
+    MyEnrollment:
+      allOf:
+        - $ref: '#/components/schemas/Enrollment'
+        - type: object
+          required:
+            - course
+            - stream
+          properties:
+            course:
+              type: object
+              required:
+                - id
+                - title
+              properties:
+                id:
+                  type: integer
+                title:
+                  type: string
+            stream:
+              type: object
+              required:
+                - id
+                - title
+                - startsOn
+                - endsOn
+              properties:
+                id:
+                  type: integer
+                title:
+                  type: string
+                startsOn:
+                  type: string
+                  format: date
+                endsOn:
+                  type: string
+                  format: date
   parameters:
     CourseId:
       name: id
       in: path
       required: true
       description: Ідентифікатор курсу.
+      schema:
+        type: integer
+        minimum: 1
+    StreamId:
+      name: id
+      in: path
+      required: true
+      description: Ідентифікатор потоку.
       schema:
         type: integer
         minimum: 1

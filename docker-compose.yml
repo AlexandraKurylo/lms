@@ -1,5 +1,3 @@
-# На цьому етапі в compose лише база даних.
-# Повний стек (api + web) додається на кроці 45.
 services:
   db:
     image: postgres:16-alpine
