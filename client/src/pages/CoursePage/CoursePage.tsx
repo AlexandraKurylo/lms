@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { BackLink } from '../../components/BackLink';
+import { EnrollButton } from '../../components/EnrollButton';
 import { ErrorMessage } from '../../components/ErrorMessage';
 import { LessonList } from '../../components/LessonList';
 import { Loading } from '../../components/Loading';
@@ -57,7 +58,9 @@ export function CoursePage() {
             <ul className={styles.streams}>
               {course.streams.map((s) => (
                 <li key={s.id}>
-                  <StreamCard stream={s} />
+                  <StreamCard stream={s}>
+                    <EnrollButton stream={s} courseId={course.id} />
+                  </StreamCard>
                 </li>
               ))}
             </ul>
