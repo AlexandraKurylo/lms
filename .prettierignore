@@ -5,3 +5,4 @@ coverage
 package-lock.json
 server/uploads
 client/src/shared/api/schema.d.ts
+server/src/db/seedContent/cpp
