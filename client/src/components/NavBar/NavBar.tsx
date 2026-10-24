@@ -30,6 +30,11 @@ export function NavBar() {
           <NavLink to="/courses" className={linkClass}>
             Каталог курсів
           </NavLink>
+          {user?.role === 'student' && (
+            <NavLink to="/my-enrollments" className={linkClass}>
+              Мої записи
+            </NavLink>
+          )}
           {!loading &&
             (user ? (
               <>
@@ -89,6 +94,11 @@ export function NavBar() {
             <NavLink to="/courses" onClick={closeMenu} className={styles.menuLink}>
               Каталог курсів
             </NavLink>
+            {user?.role === 'student' && (
+              <NavLink to="/my-enrollments" onClick={closeMenu} className={styles.menuLink}>
+                Мої записи
+              </NavLink>
+            )}
             {!loading &&
               (user ? (
                 <>

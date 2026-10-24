@@ -1,0 +1,17 @@
+.box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.note {
+  font-size: 0.8125rem;
+  color: rgb(var(--c-hinting) / 0.6);
+}
+
+.error {
+  flex-basis: 100%;
+  font-size: 0.8125rem;
+  color: rgb(var(--c-danger-text));
+}

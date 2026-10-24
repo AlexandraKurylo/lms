@@ -7,6 +7,7 @@ import { CoursePage } from '../pages/CoursePage';
 import { HomePage } from '../pages/HomePage';
 import { IntroLessonPage } from '../pages/IntroLessonPage';
 import { LoginPage } from '../pages/LoginPage';
+import { MyEnrollmentsPage } from '../pages/MyEnrollmentsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RegisterPage } from '../pages/RegisterPage';
 
@@ -25,6 +26,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <AccountPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="my-enrollments"
+          element={
+            <ProtectedRoute roles={['student']}>
+              <MyEnrollmentsPage />
             </ProtectedRoute>
           }
         />

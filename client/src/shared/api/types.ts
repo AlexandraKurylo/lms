@@ -83,3 +83,19 @@ export interface User {
   name: string;
   role: Role;
 }
+
+export type EnrollmentStatus = 'active' | 'completed' | 'cancelled';
+
+export interface Enrollment {
+  id: number;
+  streamId: number;
+  courseId: number;
+  status: EnrollmentStatus;
+  enrolledAt: string;
+}
+
+export interface MyEnrollment extends Enrollment {
+  course: { id: number; title: string };
+  stream: { id: number; title: string; startsOn: string; endsOn: string };
+}
+
