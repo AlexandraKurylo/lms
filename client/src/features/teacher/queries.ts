@@ -5,6 +5,7 @@ import type {
   CourseStatus,
   LessonInput,
   OwnCourse,
+  OwnLesson,
   OwnStream,
   StreamInput,
 } from '../../shared/api/types';
@@ -12,6 +13,7 @@ import type {
 const coursesKey = ['teacher', 'courses'] as const;
 const courseKey = (id: number) => ['teacher', 'course', id] as const;
 const streamsKey = (id: number) => ['teacher', 'streams', id] as const;
+const lessonKey = (id: number) => ['teacher', 'lesson', id] as const;
 
 export function useOwnCourses() {
   return useQuery({
@@ -43,6 +45,7 @@ function useInvalidate(courseId?: number) {
     if (courseId === undefined) return;
     void qc.invalidateQueries({ queryKey: courseKey(courseId) });
     void qc.invalidateQueries({ queryKey: streamsKey(courseId) });
+    void qc.invalidateQueries({ queryKey: ['teacher', 'lesson'] });
     void qc.invalidateQueries({ queryKey: ['course', courseId] });
   };
 }
@@ -72,6 +75,23 @@ export function useAddLesson(courseId: number) {
         method: 'POST',
         body,
       }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useOwnLesson(id: number) {
+  return useQuery({
+    queryKey: lessonKey(id),
+    queryFn: ({ signal }) => api<OwnLesson>(`/teacher/lessons/${id}`, { signal }),
+    retry: false,
+  });
+}
+
+export function useUpdateLesson(id: number, courseId: number) {
+  const invalidate = useInvalidate(courseId);
+  return useMutation({
+    mutationFn: (body: Partial<LessonInput>) =>
+      api<OwnLesson>(`/teacher/lessons/${id}`, { method: 'PATCH', body }),
     onSuccess: invalidate,
   });
 }

@@ -6,6 +6,7 @@ import type {
   CreateLessonInput,
   CreateStreamInput,
   UpdateCourseInput,
+  UpdateLessonInput,
   UpdateStreamInput,
 } from './teacher.schemas.js';
 
@@ -20,6 +21,17 @@ export interface OwnCourse {
   teacherId: number | null;
   lessonCount: number;
   updatedAt: string;
+}
+
+export interface OwnLesson {
+  id: number;
+  courseId: number;
+  courseTitle: string;
+  position: number;
+  title: string;
+  content: string;
+  isFreeIntro: boolean;
+  hasHomework: boolean;
 }
 
 export interface OwnStream {
@@ -147,6 +159,33 @@ export function createTeacherRepo(db: Db) {
       return lesson;
     },
 
+
+    async findLesson(id: number, scope: OwnerScope): Promise<OwnLesson | null> {
+      const row = await db.lesson.findFirst({
+        where: { id, course: { ...scope } },
+        select: {
+          id: true,
+          courseId: true,
+          position: true,
+          title: true,
+          content: true,
+          isFreeIntro: true,
+          hasHomework: true,
+          course: { select: { title: true } },
+        },
+      });
+      if (!row) return null;
+      const { course, ...rest } = row;
+      return { ...rest, courseTitle: course.title };
+    },
+
+    async updateLesson(id: number, scope: OwnerScope, input: UpdateLessonInput): Promise<boolean> {
+      const { count } = await db.lesson.updateMany({
+        where: { id, course: { ...scope } },
+        data: input,
+      });
+      return count === 1;
+    },
 
     async listStreams(courseId: number, scope: OwnerScope): Promise<OwnStream[] | null> {
       const course = await db.course.findFirst({ where: { id: courseId, ...scope }, select: { id: true } });

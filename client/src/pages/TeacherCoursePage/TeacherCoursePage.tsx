@@ -80,7 +80,11 @@ export function TeacherCoursePage() {
       <section className={styles.section}>
         <h2 className={`fontDisplay ${styles.h2}`}>Уроки</h2>
         {outline.data && outline.data.lessons.length > 0 && (
-          <LessonList lessons={outline.data.lessons} sequential={course.sequentialLessons} />
+          <LessonList
+            lessons={outline.data.lessons}
+            sequential={course.sequentialLessons}
+            lessonHref={(lessonId) => `/teacher/lessons/${lessonId}`}
+          />
         )}
         <div className={`glassPanel ${styles.panel}`}>
           <LessonForm

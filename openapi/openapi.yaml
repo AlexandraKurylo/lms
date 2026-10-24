@@ -416,6 +416,67 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /teacher/lessons/{id}:
+    get:
+      tags:
+        - Teacher
+      operationId: getOwnLesson
+      security:
+        - cookieAuth: []
+      summary: Мій урок
+      description: Чужий урок повертає 404, так само як неіснуючий (ADR 0013).
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      responses:
+        '200':
+          description: Урок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnLesson'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - Teacher
+      operationId: updateOwnLesson
+      security:
+        - cookieAuth: []
+      summary: Змінити урок
+      description: Частковий запис полів уроку. Позицію змінити не можна. Чужий або неіснуючий урок — 404.
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LessonUpdate'
+      responses:
+        '200':
+          description: Урок після зміни
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnLesson'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /admin/courses/{id}/status:
     patch:
       tags:
@@ -1074,6 +1135,50 @@ components:
           type: boolean
         hasHomework:
           type: boolean
+    LessonUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 2
+          maxLength: 200
+        content:
+          type: string
+          maxLength: 50000
+        isFreeIntro:
+          type: boolean
+        hasHomework:
+          type: boolean
+    OwnLesson:
+      type: object
+      required:
+        - id
+        - courseId
+        - courseTitle
+        - position
+        - title
+        - content
+        - isFreeIntro
+        - hasHomework
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        courseTitle:
+          type: string
+        position:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        isFreeIntro:
+          type: boolean
+        hasHomework:
+          type: boolean
     OwnCourse:
       type: object
       required:
@@ -1622,6 +1727,14 @@ components:
                   type: string
                   format: date
   parameters:
+    LessonId:
+      name: id
+      in: path
+      required: true
+      description: Ідентифікатор уроку.
+      schema:
+        type: integer
+        minimum: 1
     CourseId:
       name: id
       in: path
@@ -1638,3 +1751,4 @@ components:
       schema:
         type: integer
         minimum: 1
+

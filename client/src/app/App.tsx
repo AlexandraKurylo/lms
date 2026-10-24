@@ -11,6 +11,7 @@ import { MyEnrollmentsPage } from '../pages/MyEnrollmentsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { TeacherCoursePage } from '../pages/TeacherCoursePage';
+import { TeacherLessonPage } from '../pages/TeacherLessonPage';
 import { TeacherCoursesPage } from '../pages/TeacherCoursesPage';
 
 export function App() {
@@ -52,6 +53,14 @@ export function App() {
           element={
             <ProtectedRoute roles={['teacher', 'admin']}>
               <TeacherCoursePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="teacher/lessons/:id"
+          element={
+            <ProtectedRoute roles={['teacher', 'admin']}>
+              <TeacherLessonPage />
             </ProtectedRoute>
           }
         />

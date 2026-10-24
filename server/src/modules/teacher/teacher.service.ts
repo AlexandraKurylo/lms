@@ -1,12 +1,14 @@
+import { isUniqueViolation } from '../../shared/db.js';
 import { DomainError, notFound } from '../../shared/errors.js';
 import type { AuthUser } from '../auth/auth.types.js';
-import type { OwnCourse, OwnStream, TeacherRepo } from './teacher.repo.js';
+import type { OwnCourse, OwnLesson, OwnStream, TeacherRepo } from './teacher.repo.js';
 import { scopeFor } from './teacher.scope.js';
 import type {
   CreateCourseInput,
   CreateLessonInput,
   CreateStreamInput,
   UpdateCourseInput,
+  UpdateLessonInput,
   UpdateStreamInput,
 } from './teacher.schemas.js';
 
@@ -42,6 +44,27 @@ export function createTeacherService(deps: { repo: TeacherRepo }) {
       return lesson;
     },
 
+
+    async getLesson(user: AuthUser, id: number): Promise<OwnLesson> {
+      const lesson = await repo.findLesson(id, scopeFor(user));
+      if (!lesson) throw notFound('Урок');
+      return lesson;
+    },
+
+    async updateLesson(user: AuthUser, id: number, input: UpdateLessonInput): Promise<OwnLesson> {
+      try {
+        const updated = await repo.updateLesson(id, scopeFor(user), input);
+        if (!updated) throw notFound('Урок');
+      } catch (err) {
+        if (isUniqueViolation(err)) {
+          throw new DomainError('validation', 'Дані не пройшли перевірку', [
+            { path: 'body.isFreeIntro', message: 'У курсі вже є інший безкоштовний вступний урок' },
+          ]);
+        }
+        throw err;
+      }
+      return this.getLesson(user, id);
+    },
 
     async listStreams(user: AuthUser, courseId: number): Promise<OwnStream[]> {
       const streams = await repo.listStreams(courseId, scopeFor(user));

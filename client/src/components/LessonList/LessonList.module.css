@@ -41,3 +41,8 @@
   font-size: 0.875rem;
   color: rgb(var(--c-hinting) / 0.6);
 }
+
+.link {
+  color: rgb(var(--c-crystal));
+  text-decoration: underline;
+}

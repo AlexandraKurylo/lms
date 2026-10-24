@@ -8,6 +8,9 @@ import { TextField } from '../TextField';
 import styles from './LessonForm.module.css';
 
 interface LessonFormProps {
+  initial?: LessonInput;
+  submitLabel?: string;
+  pendingLabel?: string;
   pending: boolean;
   error: unknown;
   onSubmit: (values: LessonInput, reset: () => void) => void;
@@ -15,8 +18,15 @@ interface LessonFormProps {
 
 const EMPTY: LessonInput = { title: '', content: '', isFreeIntro: false, hasHomework: false };
 
-export function LessonForm({ pending, error, onSubmit }: LessonFormProps) {
-  const [values, setValues] = useState<LessonInput>(EMPTY);
+export function LessonForm({
+  initial = EMPTY,
+  submitLabel = 'Додати урок',
+  pendingLabel = 'Додаємо…',
+  pending,
+  error,
+  onSubmit,
+}: LessonFormProps) {
+  const [values, setValues] = useState<LessonInput>(initial);
   const errors = fieldErrorMap(error);
 
   function submit(e: FormEvent) {
@@ -57,7 +67,7 @@ export function LessonForm({ pending, error, onSubmit }: LessonFormProps) {
         />
       </div>
       <button type="submit" className="btnSteel" disabled={pending}>
-        {pending ? 'Додаємо…' : 'Додати урок'}
+        {pending ? pendingLabel : submitLabel}
       </button>
     </form>
   );

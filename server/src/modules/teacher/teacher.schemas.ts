@@ -5,8 +5,6 @@ const title = z.string().trim().min(3, 'Мінімум 3 символи').max(20
 const description = z.string().trim().max(5000, 'Максимум 5000 символів');
 const language = z.string().regex(/^[a-z]{2}$/, 'Двобуквений код мови, наприклад uk');
 
-// У схемах НЕМАЄ teacherId. Власник береться лише із сесії, а зайві поля в тілі
-// (.strict()) відхиляються: спроба підсунути чужого власника дає 400, а не тихо ігнорується.
 export const createCourseSchema = z
   .object({
     title,
@@ -37,11 +35,24 @@ export const createLessonSchema = z
   })
   .strict();
 
+export const updateLessonSchema = z
+  .object({
+    title: z.string().trim().min(2, 'Мінімум 2 символи').max(200, 'Максимум 200 символів').optional(),
+    content: z.string().max(50_000, 'Максимум 50000 символів').optional(),
+    isFreeIntro: z.boolean().optional(),
+    hasHomework: z.boolean().optional(),
+  })
+  .strict()
+  .refine((body) => Object.keys(body).length > 0, 'Передайте хоча б одне поле для зміни');
+  
+export const lessonIdParams = z.object({ id: z.coerce.number().int().positive() });
+
 export const courseIdParams = z.object({ id: z.coerce.number().int().positive() });
 
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;
 export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
 export type CreateLessonInput = z.infer<typeof createLessonSchema>;
+export type UpdateLessonInput = z.infer<typeof updateLessonSchema>;
 
 
 const streamTitle = z.string().trim().min(2, 'Мінімум 2 символи').max(200, 'Максимум 200 символів');
