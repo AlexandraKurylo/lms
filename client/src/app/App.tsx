@@ -10,6 +10,8 @@ import { LoginPage } from '../pages/LoginPage';
 import { MyEnrollmentsPage } from '../pages/MyEnrollmentsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RegisterPage } from '../pages/RegisterPage';
+import { TeacherCoursePage } from '../pages/TeacherCoursePage';
+import { TeacherCoursesPage } from '../pages/TeacherCoursesPage';
 
 export function App() {
   return (
@@ -34,6 +36,22 @@ export function App() {
           element={
             <ProtectedRoute roles={['student']}>
               <MyEnrollmentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="teacher"
+          element={
+            <ProtectedRoute roles={['teacher', 'admin']}>
+              <TeacherCoursesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="teacher/courses/:id"
+          element={
+            <ProtectedRoute roles={['teacher', 'admin']}>
+              <TeacherCoursePage />
             </ProtectedRoute>
           }
         />
