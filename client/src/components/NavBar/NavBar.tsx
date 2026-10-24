@@ -35,6 +35,11 @@ export function NavBar() {
               Мої записи
             </NavLink>
           )}
+          {(user?.role === 'teacher' || user?.role === 'admin') && (
+            <NavLink to="/teacher" className={linkClass}>
+              Кабінет
+            </NavLink>
+          )}
           {!loading &&
             (user ? (
               <>
@@ -97,6 +102,11 @@ export function NavBar() {
             {user?.role === 'student' && (
               <NavLink to="/my-enrollments" onClick={closeMenu} className={styles.menuLink}>
                 Мої записи
+              </NavLink>
+            )}
+            {(user?.role === 'teacher' || user?.role === 'admin') && (
+              <NavLink to="/teacher" onClick={closeMenu} className={styles.menuLink}>
+                Кабінет
               </NavLink>
             )}
             {!loading &&

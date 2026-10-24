@@ -1,4 +1,4 @@
-import type { EnrollmentStatus, Level, Role, StreamPhase } from '../api/types';
+import type { CourseStatus, EnrollmentStatus, Level, Role, StreamPhase } from '../api/types';
 
 export const LEVEL_LABEL: Record<Level, string> = {
   beginner: 'Початковий',
@@ -16,6 +16,11 @@ export const ENROLLMENT_STATUS_LABEL: Record<EnrollmentStatus, string> = {
   active: 'Навчаюся',
   completed: 'Завершено',
   cancelled: 'Скасовано',
+};
+
+export const COURSE_STATUS_LABEL: Record<CourseStatus, string> = {
+  draft: 'Чернетка',
+  published: 'Опубліковано',
 };
 
 export const PHASE_LABEL: Record<StreamPhase, string> = {
@@ -46,3 +51,4 @@ export function seatsText(left: number): string {
   if (left === 0) return 'Місць немає';
   return `${left} ${plural(left, 'вільне місце', 'вільні місця', 'вільних місць')}`;
 }
+

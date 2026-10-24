@@ -99,3 +99,50 @@ export interface MyEnrollment extends Enrollment {
   stream: { id: number; title: string; startsOn: string; endsOn: string };
 }
 
+export type CourseStatus = 'draft' | 'published';
+
+export interface OwnCourse {
+  id: number;
+  title: string;
+  description: string;
+  language: string;
+  level: Level;
+  status: CourseStatus;
+  sequentialLessons: boolean;
+  teacherId: number | null;
+  lessonCount: number;
+  updatedAt: string;
+}
+
+export interface CourseInput {
+  title: string;
+  description: string;
+  language: string;
+  level: Level;
+  sequentialLessons: boolean;
+}
+
+export interface LessonInput {
+  title: string;
+  content: string;
+  isFreeIntro: boolean;
+  hasHomework: boolean;
+}
+
+export interface OwnStream {
+  id: number;
+  courseId: number;
+  title: string;
+  startsOn: string;
+  endsOn: string;
+  capacity: number;
+  seatsTaken: number;
+}
+
+export interface StreamInput {
+  title: string;
+  startsOn: string;
+  endsOn: string;
+  capacity: number;
+}
+
