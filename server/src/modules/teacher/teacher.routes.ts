@@ -9,8 +9,10 @@ import {
   createCourseSchema,
   createLessonSchema,
   createStreamSchema,
+  lessonIdParams,
   streamIdParams,
   updateCourseSchema,
+  updateLessonSchema,
   updateStreamSchema,
 } from './teacher.schemas.js';
 import type { TeacherService } from './teacher.service.js';
@@ -58,6 +60,17 @@ export function teacherRouter(deps: {
     const { id } = parseWith(courseIdParams, req.params, 'params');
     const body = parseWith(createLessonSchema, req.body);
     res.status(201).json(await deps.service.addLesson(currentUser(req), id, body));
+  });
+
+  router.get('/teacher/lessons/:id', async (req, res) => {
+    const { id } = parseWith(lessonIdParams, req.params, 'params');
+    res.json(await deps.service.getLesson(currentUser(req), id));
+  });
+
+  router.patch('/teacher/lessons/:id', async (req, res) => {
+    const { id } = parseWith(lessonIdParams, req.params, 'params');
+    const body = parseWith(updateLessonSchema, req.body);
+    res.json(await deps.service.updateLesson(currentUser(req), id, body));
   });
 
   router.get('/teacher/courses/:id/streams', async (req, res) => {

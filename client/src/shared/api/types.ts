@@ -146,3 +146,14 @@ export interface StreamInput {
   capacity: number;
 }
 
+export interface OwnLesson {
+  id: number;
+  courseId: number;
+  courseTitle: string;
+  position: number;
+  title: string;
+  content: string;
+  isFreeIntro: boolean;
+  hasHomework: boolean;
+}
+
