@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import bcrypt from 'bcryptjs';
 import pg from 'pg';
 import request from 'supertest';
@@ -5,6 +8,7 @@ import { expect } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { createPrisma } from '../../src/shared/db.js';
 import { createLogger } from '../../src/shared/logger.js';
+import { createFileStorage } from '../../src/shared/storage.js';
 import { resetTestDatabase } from './testDb.js';
 
 export const PASSWORD = 'Passw0rd!';
@@ -17,12 +21,14 @@ export async function startKit() {
   const url = await resetTestDatabase();
   const pool = new pg.Pool({ connectionString: url, max: 20 });
   const prisma = createPrisma(url);
+  const uploadDir = await mkdtemp(join(tmpdir(), 'lms-uploads-'));
   const app = createApp({
     logger: createLogger('silent'),
     db: prisma,
     jwtSecret: process.env.JWT_SECRET!,
     cookieSecure: false,
     hasher,
+    storage: createFileStorage(uploadDir),
   });
   async function createUser(email: string, role: 'student' | 'teacher' | 'admin'): Promise<number> {
     const user = await prisma.user.create({
@@ -51,9 +57,25 @@ export async function startKit() {
     );
     return rows[0].id as number;
   }
+  async function clearUploads() {
+    await rm(uploadDir, { recursive: true, force: true });
+    await mkdir(uploadDir, { recursive: true });
+  }
   async function stop() {
     await pool.end();
     await prisma.$disconnect();
+    await rm(uploadDir, { recursive: true, force: true });
   }
-  return { app, pool, prisma, createUser, loginAs, createCourse, createStream, stop };
+  return {
+    app,
+    pool,
+    prisma,
+    uploadDir,
+    clearUploads,
+    createUser,
+    loginAs,
+    createCourse,
+    createStream,
+    stop,
+  };
 }

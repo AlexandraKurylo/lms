@@ -9,7 +9,12 @@ export function MaterialList({ materials }: { materials: Material[] }) {
       <ul className={styles.list}>
         {materials.map((m) => (
           <li key={m.id}>
-            <a href={m.url} target="_blank" rel="noreferrer" className={styles.link}>
+            <a
+              href={m.url}
+              target={m.fileName ? undefined : '_blank'}
+              rel="noreferrer"
+              className={styles.link}
+            >
               {m.title}
             </a>
           </li>

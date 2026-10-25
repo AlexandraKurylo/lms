@@ -6,7 +6,11 @@ import {
   type CourseOutline,
   type LessonRecord,
   type LearningRepo,
+  type SubmissionRecord,
 } from './learning.repo.js';
+import type { FileStorage } from '../../shared/storage.js';
+import type { UploadedFile } from '../../shared/upload.js';
+import type { SubmitInput } from './learning.schemas.js';
 import { toSummary, type ProgressSummary } from './learning.progress.js';
 
 export interface CourseProgress {
@@ -40,6 +44,7 @@ export interface LessonView {
   previousLessonId: number | null;
   nextLessonId: number | null;
   progress: ProgressSummary;
+  submission: SubmissionRecord | null;
 }
 
 function lockedIds(outline: CourseOutline, done: Set<number>): Set<number> {
@@ -57,7 +62,11 @@ const todayUtc = (): string => new Date().toISOString().slice(0, 10);
 
 const formatDay = (iso: string): string => iso.split('-').reverse().join('.');
 
-export function createLearningService(deps: { db: Db; today?: () => string }) {
+export function createLearningService(deps: {
+  db: Db;
+  storage: FileStorage;
+  today?: () => string;
+}) {
   const today = deps.today ?? todayUtc;
   const repo = (): LearningRepo => createLearningRepo(deps.db);
 
@@ -118,7 +127,7 @@ export function createLearningService(deps: { db: Db; today?: () => string }) {
     },
 
     async lesson(user: AuthUser, lessonId: number): Promise<LessonView> {
-      const { lesson, outline, done } = await open(user, lessonId);
+      const { r, lesson, outline, done } = await open(user, lessonId);
       assertOpen(lesson, outline, done);
       const index = outline.lessons.findIndex((l) => l.id === lesson.id);
       return {
@@ -134,7 +143,89 @@ export function createLearningService(deps: { db: Db; today?: () => string }) {
         previousLessonId: outline.lessons[index - 1]?.id ?? null,
         nextLessonId: outline.lessons[index + 1]?.id ?? null,
         progress: summary(outline, done),
+        submission: lesson.hasHomework ? await r.findSubmission(user.id, lesson.id) : null,
       };
+    },
+
+    async submit(user: AuthUser, lessonId: number, input: SubmitInput): Promise<SubmissionRecord> {
+      const { r, lesson, outline, done } = await open(user, lessonId);
+      assertOpen(lesson, outline, done);
+      if (!lesson.hasHomework) {
+        throw new DomainError('bad-request', 'У цього уроку немає домашнього завдання');
+      }
+      const streamId = await r.startedStreamId(user.id, lesson.courseId, today());
+      if (streamId === null) throw notFound('Урок');
+      const existing = await r.findSubmission(user.id, lesson.id);
+      if (input.comment === '' && !existing?.file) {
+        throw new DomainError('validation', 'Дані не пройшли перевірку', [
+          { path: 'body.comment', message: 'Напишіть відповідь або прикріпіть файл' },
+        ]);
+      }
+      const saved = await r.saveSubmission({
+        studentId: user.id,
+        lessonId: lesson.id,
+        streamId,
+        comment: input.comment,
+      });
+      if (saved === 'graded') {
+        throw new DomainError('submission-graded', 'Оцінену роботу змінити не можна');
+      }
+      return saved;
+    },
+
+    async attachFile(
+      user: AuthUser,
+      lessonId: number,
+      file: UploadedFile,
+    ): Promise<SubmissionRecord> {
+      const { r, lesson, outline, done } = await open(user, lessonId);
+      assertOpen(lesson, outline, done);
+      if (!lesson.hasHomework) {
+        throw new DomainError('bad-request', 'У цього уроку немає домашнього завдання');
+      }
+      const streamId = await r.startedStreamId(user.id, lesson.courseId, today());
+      if (streamId === null) throw notFound('Урок');
+      const key = await deps.storage.save(file.data);
+      let saved;
+      try {
+        saved = await r.saveFile({
+          studentId: user.id,
+          lessonId: lesson.id,
+          streamId,
+          fileName: file.name,
+          filePath: key,
+        });
+      } catch (err) {
+        await deps.storage.remove(key);
+        throw err;
+      }
+      if (saved === 'graded') {
+        await deps.storage.remove(key);
+        throw new DomainError('submission-graded', 'Оцінену роботу змінити не можна');
+      }
+      if (saved.replacedKey) await deps.storage.remove(saved.replacedKey);
+      return saved.submission;
+    },
+
+    async removeFile(user: AuthUser, lessonId: number): Promise<void> {
+      const { r, lesson, outline, done } = await open(user, lessonId);
+      assertOpen(lesson, outline, done);
+      const result = await r.removeFile(user.id, lesson.id);
+      if (result === 'graded') {
+        throw new DomainError('submission-graded', 'Оцінену роботу змінити не можна');
+      }
+      if (result.removedKey) await deps.storage.remove(result.removedKey);
+    },
+
+    async ownFile(user: AuthUser, lessonId: number): Promise<{ key: string; name: string }> {
+      const file = await repo().findStoredFile(user.id, lessonId);
+      if (!file) throw notFound('Файл');
+      return file;
+    },
+
+    async assertReadable(user: AuthUser, lessonId: number): Promise<void> {
+      const { lesson, outline, done } = await open(user, lessonId);
+      assertOpen(lesson, outline, done);
     },
 
     async complete(user: AuthUser, lessonId: number): Promise<ProgressSummary> {

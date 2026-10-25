@@ -1,0 +1,1 @@
+export { MaterialsEditor } from './MaterialsEditor';

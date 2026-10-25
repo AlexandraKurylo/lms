@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useUpdateStream } from '../../features/teacher/queries';
 import type { OwnStream } from '../../shared/api/types';
 import { formatDate } from '../../shared/lib/format';
@@ -44,6 +45,9 @@ export function TeacherStreamCard({ stream }: { stream: OwnStream }) {
         <span className="badge">
           Місць: {stream.seatsTaken} з {stream.capacity}
         </span>
+        <Link to={`/teacher/streams/${stream.id}`} className="btnSteel btnSm">
+          Студенти й роботи
+        </Link>
         <button type="button" className="btnGhost btnSm" onClick={() => setEditing(true)}>
           Змінити
         </button>

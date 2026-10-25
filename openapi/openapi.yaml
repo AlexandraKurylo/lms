@@ -990,6 +990,474 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
+  /lessons/{id}/submission:
+    put:
+      tags:
+        - Learning
+      operationId: submitHomework
+      security:
+        - cookieAuth: []
+      summary: Надіслати домашню роботу
+      description: Текстова відповідь на завдання уроку, порожня лише коли до роботи прикріплено файл. Повторне надсилання замінює відповідь, доки роботу не оцінено. Оцінену роботу змінити не можна (409 `submission-graded`). Для уроку без завдання повертається 400. Діють ті самі правила доступу, що й до уроку.
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitHomeworkRequest'
+      responses:
+        '200':
+          description: Збережена робота
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /lessons/{id}/submission/file:
+    put:
+      tags:
+        - Learning
+      operationId: attachHomeworkFile
+      security:
+        - cookieAuth: []
+      summary: Прикріпити файл до домашньої роботи
+      description: Файл надсилається тілом запиту як є (`application/octet-stream`), назва передається в заголовку `X-File-Name` (URL-кодована). Дозволені лише документи, зображення, архіви й файли з кодом, не більше 10 МБ (413 `payload-too-large`). Повторне надсилання замінює файл, доки роботу не оцінено (409 `submission-graded`). Текст відповіді при цьому необов'язковий.
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+        - name: X-File-Name
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 600
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Збережена робота
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - Learning
+      operationId: downloadOwnHomeworkFile
+      security:
+        - cookieAuth: []
+      summary: Скачати власний файл домашньої роботи
+      description: Віддається як вкладення (заголовок `Content-Disposition` зі значенням attachment) і з `X-Content-Type-Options` зі значенням nosniff. Чужий файл недоступний.
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      responses:
+        '200':
+          description: Файл
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Learning
+      operationId: removeHomeworkFile
+      security:
+        - cookieAuth: []
+      summary: Видалити файл домашньої роботи
+      description: Якщо текст відповіді порожній, разом з файлом видаляється і сама робота. Оцінену роботу змінити не можна (409 `submission-graded`).
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      responses:
+        '204':
+          description: Файл видалено
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/submissions/{id}/file:
+    get:
+      tags:
+        - Teacher
+      operationId: downloadSubmissionFile
+      security:
+        - cookieAuth: []
+      summary: Скачати файл домашньої роботи студента
+      description: Лише для викладача курсу й адміністратора, чужий курс повертає 404 (ADR 0013).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Файл
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/lessons/{id}/materials:
+    get:
+      tags:
+        - Teacher
+      operationId: listLessonMaterials
+      security:
+        - cookieAuth: []
+      summary: Матеріали уроку
+      description: Чужий урок повертає 404 (ADR 0013), адмін бачить усі.
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      responses:
+        '200':
+          description: Матеріали уроку
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Material'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Teacher
+      operationId: addMaterialLink
+      security:
+        - cookieAuth: []
+      summary: Додати посилання, відео або статтю
+      description: Дозволені лише адреси, що починаються з http або https.
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLinkMaterialRequest'
+      responses:
+        '201':
+          description: Матеріал створено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/lessons/{id}/materials/file:
+    put:
+      tags:
+        - Teacher
+      operationId: addMaterialFile
+      security:
+        - cookieAuth: []
+      summary: Завантажити файл до уроку
+      description: Файл надсилається тілом запиту як є (`application/octet-stream`), назва файлу в заголовку `X-File-Name`, необов'язкова назва матеріалу в `X-Material-Title` (обидві URL-кодовані). Ті самі обмеження за типом і розміром, що й для домашніх робіт, до 10 МБ.
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+        - name: X-File-Name
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 600
+        - name: X-Material-Title
+          in: header
+          required: false
+          schema:
+            type: string
+            maxLength: 600
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '201':
+          description: Матеріал створено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/materials/{id}:
+    delete:
+      tags:
+        - Teacher
+      operationId: deleteMaterial
+      security:
+        - cookieAuth: []
+      summary: Видалити матеріал
+      description: Для завантаженого файлу видаляється і сам файл.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '204':
+          description: Матеріал видалено
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /materials/{id}/file:
+    get:
+      tags:
+        - Learning
+      operationId: downloadMaterialFile
+      security:
+        - {}
+        - cookieAuth: []
+      summary: Скачати файл матеріалу
+      description: Файл вступного уроку доступний усім. Решта файлів доступні студенту із записом після старту потоку (з тими самими правилами, що й урок), викладачу курсу й адміністратору. Віддається як вкладення з заголовком `X-Content-Type-Options` зі значенням nosniff.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Файл
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/streams/{id}/students:
+    get:
+      tags:
+        - Teacher
+      operationId: listStreamStudents
+      security:
+        - cookieAuth: []
+      summary: Студенти потоку з прогресом
+      description: Студенти із записами active і completed, відсоток пройдених уроків і стан домашніх робіт. Потік чужого курсу повертає 404 (ADR 0013), адмін бачить усі.
+      parameters:
+        - $ref: '#/components/parameters/StreamId'
+      responses:
+        '200':
+          description: Студенти потоку
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StreamStudent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/streams/{id}/submissions:
+    get:
+      tags:
+        - Teacher
+      operationId: listStreamSubmissions
+      security:
+        - cookieAuth: []
+      summary: Домашні роботи потоку
+      description: Непроверені роботи йдуть від найстаріших, решта від найновіших. Не більше 500 записів.
+      parameters:
+        - $ref: '#/components/parameters/StreamId'
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - all
+              - pending
+              - graded
+            default: all
+      responses:
+        '200':
+          description: Роботи потоку
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StreamSubmission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/submissions/{id}/grade:
+    put:
+      tags:
+        - Teacher
+      operationId: gradeSubmission
+      security:
+        - cookieAuth: []
+      summary: Оцінити домашню роботу
+      description: Оцінка від 0 до 100 і необовязковий коментар. Повторне оцінювання замінює попереднє. Робота чужого курсу повертає 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GradeRequest'
+      responses:
+        '200':
+          description: Оцінена робота
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamSubmission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /me/enrollments:
     get:
       tags:
@@ -1134,7 +1602,7 @@ components:
             instance: /api/courses/9999
             requestId: 3f0c1d6e-8a37-4e0b-9d3e-2a6a1c9b7f10
     Conflict:
-      description: Запит конфліктує зі станом даних (`email-taken`, `already-enrolled`, `stream-full`, `stream-closed`, `has-later-progress`, `course-in-use`, `course-incomplete`).
+      description: Запит конфліктує зі станом даних (`email-taken`, `already-enrolled`, `stream-full`, `stream-closed`, `has-later-progress`, `submission-graded`, `course-in-use`, `course-incomplete`).
       headers:
         X-Request-Id:
           $ref: '#/components/headers/X-Request-Id'
@@ -1391,6 +1859,7 @@ components:
             - https://lms.example/problems/stream-full
             - https://lms.example/problems/stream-closed
             - https://lms.example/problems/has-later-progress
+            - https://lms.example/problems/submission-graded
             - https://lms.example/problems/course-in-use
             - https://lms.example/problems/course-incomplete
             - https://lms.example/problems/idempotency-key-reuse
@@ -1680,6 +2149,7 @@ components:
         - title
         - kind
         - url
+        - fileName
       properties:
         id:
           type: integer
@@ -1694,6 +2164,32 @@ components:
             - link
         url:
           type: string
+          description: Посилання на матеріал, а для завантаженого файлу адреса його скачування
+        fileName:
+          type:
+            - string
+            - 'null'
+    CreateLinkMaterialRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - kind
+        - url
+      properties:
+        title:
+          type: string
+          minLength: 2
+          maxLength: 200
+        kind:
+          type: string
+          enum:
+            - video
+            - article
+            - link
+        url:
+          type: string
+          maxLength: 2000
     IntroLesson:
       type: object
       required:
@@ -1889,6 +2385,7 @@ components:
         - previousLessonId
         - nextLessonId
         - progress
+        - submission
       properties:
         id:
           type: integer
@@ -1907,21 +2404,7 @@ components:
         materials:
           type: array
           items:
-            type: object
-            required:
-              - id
-              - title
-              - kind
-              - url
-            properties:
-              id:
-                type: integer
-              title:
-                type: string
-              kind:
-                type: string
-              url:
-                type: string
+            $ref: '#/components/schemas/Material'
         completed:
           type: boolean
         previousLessonId:
@@ -1934,6 +2417,179 @@ components:
             - 'null'
         progress:
           $ref: '#/components/schemas/ProgressSummary'
+        submission:
+          oneOf:
+            - $ref: '#/components/schemas/Submission'
+            - type: 'null'
+    SubmitHomeworkRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - comment
+      properties:
+        comment:
+          type: string
+          maxLength: 10000
+    Submission:
+      type: object
+      required:
+        - comment
+        - file
+        - submittedAt
+        - grade
+        - feedback
+        - gradedAt
+      properties:
+        comment:
+          type: string
+        file:
+          oneOf:
+            - type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+            - type: 'null'
+        submittedAt:
+          type: string
+          format: date-time
+        grade:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+          maximum: 100
+        feedback:
+          type:
+            - string
+            - 'null'
+        gradedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    GradeRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - grade
+      properties:
+        grade:
+          type: integer
+          minimum: 0
+          maximum: 100
+        feedback:
+          type: string
+          maxLength: 2000
+    StreamStudent:
+      type: object
+      required:
+        - enrollmentId
+        - studentId
+        - name
+        - email
+        - status
+        - enrolledAt
+        - progress
+        - homework
+      properties:
+        enrollmentId:
+          type: integer
+        studentId:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        status:
+          type: string
+          enum:
+            - active
+            - completed
+        enrolledAt:
+          type: string
+          format: date-time
+        progress:
+          $ref: '#/components/schemas/ProgressSummary'
+        homework:
+          type: object
+          required:
+            - total
+            - submitted
+            - graded
+          properties:
+            total:
+              type: integer
+            submitted:
+              type: integer
+            graded:
+              type: integer
+    StreamSubmission:
+      type: object
+      required:
+        - id
+        - student
+        - lesson
+        - comment
+        - file
+        - submittedAt
+        - grade
+        - feedback
+        - gradedAt
+      properties:
+        id:
+          type: integer
+        student:
+          type: object
+          required:
+            - id
+            - name
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        lesson:
+          type: object
+          required:
+            - id
+            - position
+            - title
+          properties:
+            id:
+              type: integer
+            position:
+              type: integer
+            title:
+              type: string
+        comment:
+          type: string
+        file:
+          oneOf:
+            - type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+            - type: 'null'
+        submittedAt:
+          type: string
+          format: date-time
+        grade:
+          type:
+            - integer
+            - 'null'
+        feedback:
+          type:
+            - string
+            - 'null'
+        gradedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
     MyEnrollment:
       allOf:
         - $ref: '#/components/schemas/Enrollment'
@@ -1998,5 +2654,3 @@ components:
       schema:
         type: integer
         minimum: 1
-
-

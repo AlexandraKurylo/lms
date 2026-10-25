@@ -1,0 +1,41 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+}
+
+.item {
+  display: grid;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+}
+
+@media (min-width: 720px) {
+  .item {
+    grid-template-columns: 1.2fr 1.4fr 1fr;
+  }
+}
+
+.who,
+.progress,
+.homework {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.homework {
+  align-items: flex-start;
+}
+
+.muted {
+  font-size: 0.8125rem;
+  color: rgb(var(--c-hinting) / 0.6);
+}
+
+.empty {
+  color: rgb(var(--c-hinting) / 0.6);
+}

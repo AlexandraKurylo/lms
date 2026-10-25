@@ -1,3 +1,4 @@
+import { materialSelect, toMaterialView, type MaterialView } from '../materials/materials.view.js';
 import type { CourseLevel, Prisma } from '@prisma/client';
 import type { Db } from '../../shared/db.js';
 
@@ -58,7 +59,7 @@ export interface IntroLesson {
   position: number;
   title: string;
   content: string;
-  materials: { id: number; title: string; kind: string; url: string }[];
+  materials: MaterialView[];
 }
 
 /** Екранує спецсимволи LIKE, щоб пошук «50%» шукав саме «50%», а не будь-що. */
@@ -206,19 +207,17 @@ export function createCatalogRepo(db: Db) {
     },
 
     async findIntroLesson(courseId: number): Promise<IntroLesson | null> {
-      return db.lesson.findFirst({
+      const lesson = await db.lesson.findFirst({
         where: { courseId, isFreeIntro: true },
         select: {
           id: true,
           position: true,
           title: true,
           content: true,
-          materials: {
-            orderBy: { id: 'asc' },
-            select: { id: true, title: true, kind: true, url: true },
-          },
+          materials: { orderBy: { id: 'asc' }, select: materialSelect },
         },
       });
+      return lesson && { ...lesson, materials: lesson.materials.map(toMaterialView) };
     },
   };
 }

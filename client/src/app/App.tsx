@@ -14,6 +14,7 @@ import { RegisterPage } from '../pages/RegisterPage';
 import { StudentLessonPage } from '../pages/StudentLessonPage';
 import { TeacherCoursePage } from '../pages/TeacherCoursePage';
 import { TeacherLessonPage } from '../pages/TeacherLessonPage';
+import { TeacherStreamPage } from '../pages/TeacherStreamPage';
 import { TeacherCoursesPage } from '../pages/TeacherCoursesPage';
 
 export function App() {
@@ -71,6 +72,14 @@ export function App() {
           element={
             <ProtectedRoute roles={['teacher', 'admin']}>
               <TeacherCoursePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="teacher/streams/:id"
+          element={
+            <ProtectedRoute roles={['teacher', 'admin']}>
+              <TeacherStreamPage />
             </ProtectedRoute>
           }
         />

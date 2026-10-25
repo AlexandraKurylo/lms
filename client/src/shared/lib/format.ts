@@ -47,6 +47,17 @@ export function formatDate(iso: string): string {
   });
 }
 
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('uk-UA', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Kyiv',
+  });
+}
+
 export function hasStarted(startsOn: string): boolean {
   return startsOn <= new Date().toISOString().slice(0, 10);
 }
