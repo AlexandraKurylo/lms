@@ -30,6 +30,8 @@ tags:
     description: Кабінет викладача (лише teacher і admin)
   - name: Enrollments
     description: Запис студента на потоки (лише student)
+  - name: Learning
+    description: Перегляд уроків і прогрес записаного студента (лише student)
   - name: Admin
     description: Дії адміністратора (лише admin)
   - name: Catalog
@@ -875,6 +877,119 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalError'
+  /me/courses/{id}/progress:
+    get:
+      tags:
+        - Learning
+      operationId: getCourseProgress
+      security:
+        - cookieAuth: []
+      summary: Прогрес студента по курсу
+      description: Усі уроки курсу з позначками `completed` і `locked` та відсоток пройденого. Потрібен запис на потік курсу (`not-enrolled`).
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      responses:
+        '200':
+          description: Прогрес
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseProgress'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /lessons/{id}:
+    get:
+      tags:
+        - Learning
+      operationId: getLesson
+      security:
+        - cookieAuth: []
+      summary: Урок для записаного студента
+      description: Повний текст і матеріали. 403 `not-enrolled`, якщо немає запису, і 403 `lesson-locked`, якщо курс іде по черзі, а попередній урок не пройдено. Гості читають лише вступний урок через `/courses/{id}/intro-lesson`.
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      responses:
+        '200':
+          description: Урок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonView'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /lessons/{id}/progress:
+    put:
+      tags:
+        - Learning
+      operationId: markLessonDone
+      security:
+        - cookieAuth: []
+      summary: Позначити урок пройденим
+      description: Операція ідемпотентна, повторна позначка нічого не змінює. Закритий урок позначити не можна (`lesson-locked`).
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      responses:
+        '200':
+          description: Прогрес курсу після позначки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Learning
+      operationId: unmarkLessonDone
+      security:
+        - cookieAuth: []
+      summary: Зняти позначку з уроку
+      description: У курсі, що йде по черзі, позначку не можна зняти, якщо пройдено пізніший урок (409 `has-later-progress`).
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      responses:
+        '200':
+          description: Прогрес курсу після зняття
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /me/enrollments:
     get:
       tags:
@@ -1690,6 +1805,127 @@ components:
         enrolledAt:
           type: string
           format: date-time
+    ProgressSummary:
+      type: object
+      required:
+        - completed
+        - total
+        - percent
+      properties:
+        completed:
+          type: integer
+          minimum: 0
+        total:
+          type: integer
+          minimum: 0
+        percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+    CourseProgress:
+      type: object
+      required:
+        - courseId
+        - title
+        - sequentialLessons
+        - progress
+        - lessons
+      properties:
+        courseId:
+          type: integer
+        title:
+          type: string
+        sequentialLessons:
+          type: boolean
+        progress:
+          $ref: '#/components/schemas/ProgressSummary'
+        lessons:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - position
+              - title
+              - isFreeIntro
+              - hasHomework
+              - completed
+              - locked
+            properties:
+              id:
+                type: integer
+              position:
+                type: integer
+              title:
+                type: string
+              isFreeIntro:
+                type: boolean
+              hasHomework:
+                type: boolean
+              completed:
+                type: boolean
+              locked:
+                type: boolean
+    LessonView:
+      type: object
+      required:
+        - id
+        - courseId
+        - courseTitle
+        - position
+        - title
+        - content
+        - hasHomework
+        - materials
+        - completed
+        - previousLessonId
+        - nextLessonId
+        - progress
+      properties:
+        id:
+          type: integer
+        courseId:
+          type: integer
+        courseTitle:
+          type: string
+        position:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        hasHomework:
+          type: boolean
+        materials:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - title
+              - kind
+              - url
+            properties:
+              id:
+                type: integer
+              title:
+                type: string
+              kind:
+                type: string
+              url:
+                type: string
+        completed:
+          type: boolean
+        previousLessonId:
+          type:
+            - integer
+            - 'null'
+        nextLessonId:
+          type:
+            - integer
+            - 'null'
+        progress:
+          $ref: '#/components/schemas/ProgressSummary'
     MyEnrollment:
       allOf:
         - $ref: '#/components/schemas/Enrollment'
@@ -1697,7 +1933,10 @@ components:
           required:
             - course
             - stream
+            - progress
           properties:
+            progress:
+              $ref: '#/components/schemas/ProgressSummary'
             course:
               type: object
               required:
@@ -1751,4 +1990,5 @@ components:
       schema:
         type: integer
         minimum: 1
+
 

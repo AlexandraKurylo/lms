@@ -1,4 +1,6 @@
 import type { Db } from '../../shared/db.js';
+import { toSummary, type ProgressSummary } from '../learning/learning.progress.js';
+import { createLearningRepo } from '../learning/learning.repo.js';
 import { SEAT_STATUSES } from '../teacher/teacher.repo.js';
 
 export interface LockedStream {
@@ -19,6 +21,7 @@ export interface EnrollmentRow {
 export interface MyEnrollment extends EnrollmentRow {
   course: { id: number; title: string };
   stream: { id: number; title: string; startsOn: string; endsOn: string };
+  progress: ProgressSummary;
 }
 
 const rowSelect = {
@@ -108,8 +111,15 @@ export function createEnrollmentsRepo(db: Db) {
           },
         },
       });
+      const byCourse = await createLearningRepo(db).progressByCourse(studentId, [
+        ...new Set(rows.map((r) => r.courseId)),
+      ]);
       return rows.map((r) => ({
         ...toRow(r),
+        progress: toSummary(
+          byCourse.get(r.courseId)?.completed ?? 0,
+          byCourse.get(r.courseId)?.total ?? 0,
+        ),
         course: r.stream.course,
         stream: {
           id: r.stream.id,

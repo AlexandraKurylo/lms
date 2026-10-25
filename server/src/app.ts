@@ -15,6 +15,8 @@ import { catalogRouter } from './modules/catalog/catalog.routes.js';
 import { createCatalogService } from './modules/catalog/catalog.service.js';
 import { createEnrollmentsService } from './modules/enrollments/enrollments.service.js';
 import { enrollmentsRouter } from './modules/enrollments/enrollments.routes.js';
+import { learningRouter } from './modules/learning/learning.routes.js';
+import { createLearningService } from './modules/learning/learning.service.js';
 import { createTeacherRepo } from './modules/teacher/teacher.repo.js';
 import { teacherRouter } from './modules/teacher/teacher.routes.js';
 import { createTeacherService } from './modules/teacher/teacher.service.js';
@@ -84,10 +86,8 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
         guards,
       }),
     );
-    app.use(
-      '/api',
-      adminRouter({ service: createAdminService({ db: deps.db }), guards }),
-    );
+    app.use('/api', adminRouter({ service: createAdminService({ db: deps.db }), guards }));
+    app.use('/api', learningRouter({ service: createLearningService({ db: deps.db }), guards }));
     app.use(
       '/api',
       enrollmentsRouter({ service: createEnrollmentsService({ db: deps.db }), guards }),

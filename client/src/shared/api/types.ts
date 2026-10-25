@@ -97,6 +97,7 @@ export interface Enrollment {
 export interface MyEnrollment extends Enrollment {
   course: { id: number; title: string };
   stream: { id: number; title: string; startsOn: string; endsOn: string };
+  progress: ProgressSummary;
 }
 
 export type CourseStatus = 'draft' | 'published';
@@ -156,4 +157,44 @@ export interface OwnLesson {
   isFreeIntro: boolean;
   hasHomework: boolean;
 }
+
+export interface ProgressSummary {
+  completed: number;
+  total: number;
+  percent: number;
+}
+
+export interface LessonProgressItem {
+  id: number;
+  position: number;
+  title: string;
+  isFreeIntro: boolean;
+  hasHomework: boolean;
+  completed: boolean;
+  locked: boolean;
+}
+
+export interface CourseProgress {
+  courseId: number;
+  title: string;
+  sequentialLessons: boolean;
+  progress: ProgressSummary;
+  lessons: LessonProgressItem[];
+}
+
+export interface LessonView {
+  id: number;
+  courseId: number;
+  courseTitle: string;
+  position: number;
+  title: string;
+  content: string;
+  hasHomework: boolean;
+  materials: Material[];
+  completed: boolean;
+  previousLessonId: number | null;
+  nextLessonId: number | null;
+  progress: ProgressSummary;
+}
+
 

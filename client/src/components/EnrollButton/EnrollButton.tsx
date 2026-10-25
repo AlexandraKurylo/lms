@@ -36,6 +36,9 @@ export function EnrollButton({ stream, courseId }: { stream: StreamInfo; courseI
     return (
       <div className={styles.box}>
         <span className="badge">Ви записані</span>
+        <Link to={`/learn/${courseId}`} className="btnSteel btnSm">
+          Перейти до навчання
+        </Link>
         {own.status === 'active' && (
           <button
             type="button"
