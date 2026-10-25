@@ -30,12 +30,12 @@ export interface CourseOutline {
 
 export function createLearningRepo(db: Db) {
   return {
-    async hasSeat(studentId: number, courseId: number): Promise<boolean> {
-      const row = await db.enrollment.findFirst({
+    async seatStarts(studentId: number, courseId: number): Promise<string[]> {
+      const rows = await db.enrollment.findMany({
         where: { studentId, courseId, status: { in: SEAT_STATUSES } },
-        select: { id: true },
+        select: { stream: { select: { startsOn: true } } },
       });
-      return row !== null;
+      return rows.map((r) => r.stream.startsOn.toISOString().slice(0, 10)).sort();
     },
 
     async findOutline(courseId: number): Promise<CourseOutline | null> {

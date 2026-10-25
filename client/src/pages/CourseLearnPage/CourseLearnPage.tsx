@@ -5,6 +5,7 @@ import { LearnLessonList } from '../../components/LearnLessonList';
 import { Loading } from '../../components/Loading';
 import { ProgressBar } from '../../components/ProgressBar';
 import { useCourseProgress } from '../../features/learning/queries';
+import { formatDate } from '../../shared/lib/format';
 import { NotFoundPage } from '../NotFoundPage';
 import styles from './CourseLearnPage.module.css';
 
@@ -32,11 +33,17 @@ export function CourseLearnPage() {
       <header className={styles.header}>
         <h1 className={`fontDisplay ${styles.title}`}>{data.title}</h1>
         <ProgressBar percent={data.progress.percent} label="Прогрес курсу" />
-        <p className={styles.note}>
-          Пройдено {data.progress.completed} з {data.progress.total}
-          {data.sequentialLessons && ', уроки відкриваються по черзі'}
-        </p>
-        {next && (
+        {data.started ? (
+          <p className={styles.note}>
+            Пройдено {data.progress.completed} з {data.progress.total}
+            {data.sequentialLessons && ', уроки відкриваються по черзі'}
+          </p>
+        ) : (
+          <p className={styles.note} role="status">
+            Навчання почнеться {formatDate(data.startsOn)}, тоді відкриються уроки
+          </p>
+        )}
+        {data.started && next && (
           <Link to={`/lessons/${next.id}`} className="btnSteel">
             {data.progress.completed === 0 ? 'Почати навчання' : 'Продовжити'}
           </Link>

@@ -885,7 +885,7 @@ paths:
       security:
         - cookieAuth: []
       summary: Прогрес студента по курсу
-      description: Усі уроки курсу з позначками `completed` і `locked` та відсоток пройденого. Потрібен запис на потік курсу (`not-enrolled`).
+      description: Усі уроки курсу з позначками `completed` і `locked` та відсоток пройденого. Потрібен запис на потік курсу (`not-enrolled`). Якщо потік ще не розпочався, `started` дорівнює false, а всі уроки закриті.
       parameters:
         - $ref: '#/components/parameters/CourseId'
       responses:
@@ -913,7 +913,7 @@ paths:
       security:
         - cookieAuth: []
       summary: Урок для записаного студента
-      description: Повний текст і матеріали. 403 `not-enrolled`, якщо немає запису, і 403 `lesson-locked`, якщо курс іде по черзі, а попередній урок не пройдено. Гості читають лише вступний урок через `/courses/{id}/intro-lesson`.
+      description: Повний текст і матеріали. 403 `not-enrolled`, якщо немає запису, і 403 `stream-not-started`, поки потік не розпочався, і 403 `lesson-locked`, якщо курс іде по черзі, а попередній урок не пройдено. Гості читають лише вступний урок через `/courses/{id}/intro-lesson`.
       parameters:
         - $ref: '#/components/parameters/LessonId'
       responses:
@@ -1384,6 +1384,7 @@ components:
             - https://lms.example/problems/forbidden
             - https://lms.example/problems/lesson-locked
             - https://lms.example/problems/not-enrolled
+            - https://lms.example/problems/stream-not-started
             - https://lms.example/problems/not-found
             - https://lms.example/problems/email-taken
             - https://lms.example/problems/already-enrolled
@@ -1826,6 +1827,8 @@ components:
       type: object
       required:
         - courseId
+        - started
+        - startsOn
         - title
         - sequentialLessons
         - progress
@@ -1833,6 +1836,11 @@ components:
       properties:
         courseId:
           type: integer
+        started:
+          type: boolean
+        startsOn:
+          type: string
+          format: date
         title:
           type: string
         sequentialLessons:

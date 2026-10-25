@@ -4,13 +4,8 @@ import { ZodError } from 'zod';
 import { DomainError } from './errors.js';
 import type { FieldError, ProblemCode } from './errors.js';
 
-/** Базовий URI типів помилок. `type` = база + код, наприклад .../problems/stream-full. */
 export const PROBLEM_TYPE_BASE = 'https://lms.example/problems/';
 
-/**
- * Відповідність «код помилки → HTTP-статус і заголовок».
- * Вибір статусів обґрунтовано в docs/adr/0006-problem-json.md і описано в OpenAPI.
- */
 export const PROBLEMS: Record<ProblemCode, { status: number; title: string }> = {
   'bad-request': { status: 400, title: 'Некоректний запит' },
   validation: { status: 400, title: 'Помилка валідації' },
@@ -19,6 +14,7 @@ export const PROBLEMS: Record<ProblemCode, { status: number; title: string }> = 
   forbidden: { status: 403, title: 'Недостатньо прав' },
   'lesson-locked': { status: 403, title: 'Урок ще закритий' },
   'not-enrolled': { status: 403, title: 'Немає запису на потік цього курсу' },
+  'stream-not-started': { status: 403, title: 'Потік ще не розпочався' },
   'not-found': { status: 404, title: 'Ресурс не знайдено' },
   'email-taken': { status: 409, title: 'Email уже зайнятий' },
   'already-enrolled': { status: 409, title: 'Запис на цей курс уже існує' },
@@ -53,7 +49,6 @@ export interface ClassifiedError {
   errors?: FieldError[];
 }
 
-/** Перетворює будь-яку помилку на код problem. Чиста функція — легко тестується. */
 export function classifyError(err: unknown): ClassifiedError {
   if (err instanceof DomainError) {
     return { code: err.code, detail: err.detail, errors: err.errors };

@@ -11,6 +11,8 @@ import { toSummary, type ProgressSummary } from './learning.progress.js';
 
 export interface CourseProgress {
   courseId: number;
+  started: boolean;
+  startsOn: string;
   title: string;
   sequentialLessons: boolean;
   progress: ProgressSummary;
@@ -51,15 +53,27 @@ function lockedIds(outline: CourseOutline, done: Set<number>): Set<number> {
   return locked;
 }
 
-export function createLearningService(deps: { db: Db }) {
+const todayUtc = (): string => new Date().toISOString().slice(0, 10);
+
+const formatDay = (iso: string): string => iso.split('-').reverse().join('.');
+
+export function createLearningService(deps: { db: Db; today?: () => string }) {
+  const today = deps.today ?? todayUtc;
   const repo = (): LearningRepo => createLearningRepo(deps.db);
 
   async function open(user: AuthUser, lessonId: number) {
     const r = repo();
     const lesson = await r.findLesson(lessonId);
     if (!lesson) throw notFound('Урок');
-    if (!(await r.hasSeat(user.id, lesson.courseId))) {
+    const starts = await r.seatStarts(user.id, lesson.courseId);
+    if (starts.length === 0) {
       throw new DomainError('not-enrolled', 'Щоб відкрити урок, запишіться на потік цього курсу');
+    }
+    if (!starts.some((day) => day <= today())) {
+      throw new DomainError(
+        'stream-not-started',
+        `Навчання почнеться ${formatDay(starts[0]!)}, тоді відкриються уроки`,
+      );
     }
     const outline = await r.findOutline(lesson.courseId);
     if (!outline) throw notFound('Урок');
@@ -81,13 +95,17 @@ export function createLearningService(deps: { db: Db }) {
       const r = repo();
       const outline = await r.findOutline(courseId);
       if (!outline) throw notFound('Курс');
-      if (!(await r.hasSeat(user.id, courseId))) {
+      const starts = await r.seatStarts(user.id, courseId);
+      if (starts.length === 0) {
         throw new DomainError('not-enrolled', 'Ви не записані на цей курс');
       }
+      const started = starts.some((day) => day <= today());
       const done = await r.completedLessonIds(user.id, courseId);
-      const locked = lockedIds(outline, done);
+      const locked = started ? lockedIds(outline, done) : new Set(outline.lessons.map((l) => l.id));
       return {
         courseId: outline.id,
+        started,
+        startsOn: starts[0]!,
         title: outline.title,
         sequentialLessons: outline.sequentialLessons,
         progress: summary(outline, done),

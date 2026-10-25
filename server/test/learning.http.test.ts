@@ -32,6 +32,15 @@ async function addLessons(course: number, count: number): Promise<number[]> {
   return ids;
 }
 
+async function createStream(course: number, startsInDays: number): Promise<number> {
+  const { rows } = await kit.pool.query(
+    `INSERT INTO streams(course_id, title, starts_on, ends_on, capacity)
+     VALUES ($1, 'Потік', current_date + $2::int, current_date + $2::int + 60, 10) RETURNING id`,
+    [course, startsInDays],
+  );
+  return rows[0].id as number;
+}
+
 async function enrollStudent(status: 'active' | 'completed' | 'cancelled' = 'active') {
   await kit.pool.query(
     `INSERT INTO enrollments(student_id, stream_id, course_id, status) VALUES ($1, $2, $3, $4)`,
@@ -48,7 +57,7 @@ beforeEach(async () => {
   student = await kit.loginAs('s@example.com');
   stranger = await kit.loginAs('x@example.com');
   courseId = await kit.createCourse(teacherId, 'published');
-  streamId = await kit.createStream(courseId, 10);
+  streamId = await createStream(courseId, -5);
   lessons = await addLessons(courseId, 3);
 });
 
@@ -73,6 +82,20 @@ describe('перегляд уроків і прогрес студента', () 
     expect(res.status).toBe(403);
     expect(res.body.type).toMatch(/not-enrolled$/);
     expect((await outline(stranger)).status).toBe(403);
+  });
+
+  it('поки потік не розпочався, уроки закриті, а в огляді курсу всі уроки закриті', async () => {
+    streamId = await createStream(courseId, 10);
+    await enrollStudent();
+    const lesson = await get(student, lessons[0]!);
+    expect(lesson.status).toBe(403);
+    expect(lesson.body.type).toMatch(/stream-not-started$/);
+    expect((await done(student, lessons[0]!)).status).toBe(403);
+
+    const list = await outline(student);
+    expect(list.status).toBe(200);
+    expect(list.body.started).toBe(false);
+    expect(list.body.lessons.every((l: { locked: boolean }) => l.locked)).toBe(true);
   });
 
   it('скасований запис місця не дає → 403', async () => {

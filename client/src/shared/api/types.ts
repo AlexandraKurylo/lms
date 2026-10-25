@@ -176,6 +176,8 @@ export interface LessonProgressItem {
 
 export interface CourseProgress {
   courseId: number;
+  started: boolean;
+  startsOn: string;
   title: string;
   sequentialLessons: boolean;
   progress: ProgressSummary;
