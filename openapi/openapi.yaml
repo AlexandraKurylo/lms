@@ -1158,6 +1158,187 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /teacher/lessons/{id}/materials:
+    get:
+      tags:
+        - Teacher
+      operationId: listLessonMaterials
+      security:
+        - cookieAuth: []
+      summary: Матеріали уроку
+      description: Чужий урок повертає 404 (ADR 0013), адмін бачить усі.
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      responses:
+        '200':
+          description: Матеріали уроку
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Material'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Teacher
+      operationId: addMaterialLink
+      security:
+        - cookieAuth: []
+      summary: Додати посилання, відео або статтю
+      description: Дозволені лише адреси, що починаються з http або https.
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLinkMaterialRequest'
+      responses:
+        '201':
+          description: Матеріал створено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/lessons/{id}/materials/file:
+    put:
+      tags:
+        - Teacher
+      operationId: addMaterialFile
+      security:
+        - cookieAuth: []
+      summary: Завантажити файл до уроку
+      description: Файл надсилається тілом запиту як є (`application/octet-stream`), назва файлу в заголовку `X-File-Name`, необов'язкова назва матеріалу в `X-Material-Title` (обидві URL-кодовані). Ті самі обмеження за типом і розміром, що й для домашніх робіт, до 10 МБ.
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+        - name: X-File-Name
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 600
+        - name: X-Material-Title
+          in: header
+          required: false
+          schema:
+            type: string
+            maxLength: 600
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '201':
+          description: Матеріал створено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /teacher/materials/{id}:
+    delete:
+      tags:
+        - Teacher
+      operationId: deleteMaterial
+      security:
+        - cookieAuth: []
+      summary: Видалити матеріал
+      description: Для завантаженого файлу видаляється і сам файл.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '204':
+          description: Матеріал видалено
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /materials/{id}/file:
+    get:
+      tags:
+        - Learning
+      operationId: downloadMaterialFile
+      security:
+        - {}
+        - cookieAuth: []
+      summary: Скачати файл матеріалу
+      description: Файл вступного уроку доступний усім. Решта файлів доступні студенту із записом після старту потоку (з тими самими правилами, що й урок), викладачу курсу й адміністратору. Віддається як вкладення з заголовком `X-Content-Type-Options` зі значенням nosniff.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Файл
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /teacher/streams/{id}/students:
     get:
       tags:
@@ -1968,6 +2149,7 @@ components:
         - title
         - kind
         - url
+        - fileName
       properties:
         id:
           type: integer
@@ -1982,6 +2164,32 @@ components:
             - link
         url:
           type: string
+          description: Посилання на матеріал, а для завантаженого файлу адреса його скачування
+        fileName:
+          type:
+            - string
+            - 'null'
+    CreateLinkMaterialRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - kind
+        - url
+      properties:
+        title:
+          type: string
+          minLength: 2
+          maxLength: 200
+        kind:
+          type: string
+          enum:
+            - video
+            - article
+            - link
+        url:
+          type: string
+          maxLength: 2000
     IntroLesson:
       type: object
       required:
@@ -2196,21 +2404,7 @@ components:
         materials:
           type: array
           items:
-            type: object
-            required:
-              - id
-              - title
-              - kind
-              - url
-            properties:
-              id:
-                type: integer
-              title:
-                type: string
-              kind:
-                type: string
-              url:
-                type: string
+            $ref: '#/components/schemas/Material'
         completed:
           type: boolean
         previousLessonId:

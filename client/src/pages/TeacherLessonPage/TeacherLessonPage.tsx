@@ -3,6 +3,7 @@ import { BackLink } from '../../components/BackLink';
 import { ErrorMessage } from '../../components/ErrorMessage';
 import { LessonForm } from '../../components/LessonForm';
 import { Loading } from '../../components/Loading';
+import { MaterialsEditor } from '../../components/MaterialsEditor';
 import { useOwnLesson, useUpdateLesson } from '../../features/teacher/queries';
 import { NotFoundPage } from '../NotFoundPage';
 import styles from './TeacherLessonPage.module.css';
@@ -44,6 +45,7 @@ export function TeacherLessonPage() {
           onSubmit={(values) => update.mutate(values)}
         />
       </section>
+      <MaterialsEditor lessonId={data.id} />
     </div>
   );
 }

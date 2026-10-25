@@ -65,6 +65,13 @@ export interface Material {
   title: string;
   kind: 'video' | 'article' | 'file' | 'link';
   url: string;
+  fileName: string | null;
+}
+
+export interface LinkMaterialInput {
+  title: string;
+  kind: 'video' | 'article' | 'link';
+  url: string;
 }
 
 export interface IntroLesson {

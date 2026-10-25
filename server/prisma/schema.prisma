@@ -143,6 +143,9 @@ model Material {
   title    String
   kind     MaterialKind @default(link)
   url      String
+  // файл, завантажений викладачем: справжня назва і випадковий ключ у сховищі
+  fileName String?      @map("file_name")
+  filePath String?      @map("file_path")
 
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 

@@ -17,6 +17,8 @@ import { createEnrollmentsService } from './modules/enrollments/enrollments.serv
 import { enrollmentsRouter } from './modules/enrollments/enrollments.routes.js';
 import { gradingRouter } from './modules/grading/grading.routes.js';
 import { createGradingService } from './modules/grading/grading.service.js';
+import { createMaterialsService } from './modules/materials/materials.service.js';
+import { materialsRouter } from './modules/materials/materials.routes.js';
 import { learningRouter } from './modules/learning/learning.routes.js';
 import { createLearningService } from './modules/learning/learning.service.js';
 import { createTeacherRepo } from './modules/teacher/teacher.repo.js';
@@ -96,9 +98,15 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
       '/api',
       gradingRouter({ service: createGradingService({ db: deps.db }), storage, guards }),
     );
+    const learning = createLearningService({ db: deps.db, storage });
+    app.use('/api', learningRouter({ service: learning, storage, guards }));
     app.use(
       '/api',
-      learningRouter({ service: createLearningService({ db: deps.db, storage }), storage, guards }),
+      materialsRouter({
+        service: createMaterialsService({ db: deps.db, storage, learning }),
+        storage,
+        guards,
+      }),
     );
     app.use(
       '/api',

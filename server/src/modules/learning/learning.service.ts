@@ -223,6 +223,11 @@ export function createLearningService(deps: {
       return file;
     },
 
+    async assertReadable(user: AuthUser, lessonId: number): Promise<void> {
+      const { lesson, outline, done } = await open(user, lessonId);
+      assertOpen(lesson, outline, done);
+    },
+
     async complete(user: AuthUser, lessonId: number): Promise<ProgressSummary> {
       const { r, lesson, outline, done } = await open(user, lessonId);
       assertOpen(lesson, outline, done);

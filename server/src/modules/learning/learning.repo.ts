@@ -1,5 +1,6 @@
 import type { Db } from '../../shared/db.js';
 import { isUniqueViolation } from '../../shared/db.js';
+import { materialSelect, toMaterialView, type MaterialView } from '../materials/materials.view.js';
 import { SEAT_STATUSES } from '../teacher/teacher.repo.js';
 
 export interface LessonRecord {
@@ -10,7 +11,7 @@ export interface LessonRecord {
   content: string;
   isFreeIntro: boolean;
   hasHomework: boolean;
-  materials: { id: number; title: string; kind: string; url: string }[];
+  materials: MaterialView[];
   course: { title: string; sequentialLessons: boolean };
 }
 
@@ -222,14 +223,11 @@ export function createLearningRepo(db: Db) {
           content: true,
           isFreeIntro: true,
           hasHomework: true,
-          materials: {
-            orderBy: { id: 'asc' },
-            select: { id: true, title: true, kind: true, url: true },
-          },
+          materials: { orderBy: { id: 'asc' }, select: materialSelect },
           course: { select: { title: true, sequentialLessons: true } },
         },
       });
-      return lesson;
+      return lesson && { ...lesson, materials: lesson.materials.map(toMaterialView) };
     },
 
     async completedLessonIds(studentId: number, courseId: number): Promise<Set<number>> {

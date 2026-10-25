@@ -4,6 +4,8 @@ import type {
   CourseInput,
   CourseStatus,
   GradeInput,
+  LinkMaterialInput,
+  Material,
   LessonInput,
   OwnCourse,
   OwnLesson,
@@ -166,5 +168,45 @@ export function useGradeSubmission(streamId: number, submissionId: number) {
       void qc.invalidateQueries({ queryKey: ['teacher', 'stream-submissions', streamId] });
       void qc.invalidateQueries({ queryKey: ['teacher', 'stream-students', streamId] });
     },
+  });
+}
+
+const materialsKey = (lessonId: number) => ['teacher', 'materials', lessonId] as const;
+
+export function useLessonMaterials(lessonId: number) {
+  return useQuery({
+    queryKey: materialsKey(lessonId),
+    queryFn: ({ signal }) =>
+      api<{ items: Material[] }>(`/teacher/lessons/${lessonId}/materials`, { signal }),
+  });
+}
+
+export function useAddMaterialLink(lessonId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: LinkMaterialInput) =>
+      api<Material>(`/teacher/lessons/${lessonId}/materials`, { method: 'POST', body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: materialsKey(lessonId) }),
+  });
+}
+
+export function useAddMaterialFile(lessonId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, title }: { file: File; title: string }) =>
+      api<Material>(`/teacher/lessons/${lessonId}/materials/file`, {
+        method: 'PUT',
+        file,
+        headers: title ? { 'X-Material-Title': encodeURIComponent(title) } : undefined,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: materialsKey(lessonId) }),
+  });
+}
+
+export function useDeleteMaterial(lessonId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api<void>(`/teacher/materials/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: materialsKey(lessonId) }),
   });
 }

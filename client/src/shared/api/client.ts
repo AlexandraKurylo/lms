@@ -33,6 +33,7 @@ interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
   file?: File;
+  headers?: Record<string, string>;
   signal?: AbortSignal;
 }
 
@@ -68,7 +69,7 @@ export async function api<T>(
   options: RequestOptions = {},
   retried = false,
 ): Promise<T> {
-  const { method = 'GET', body, file, signal } = options;
+  const { method = 'GET', body, file, headers: extra, signal } = options;
   let res: Response;
   try {
     res = await fetch(`/api${path}`, {
@@ -79,6 +80,7 @@ export async function api<T>(
         ? {
             'Content-Type': 'application/octet-stream',
             'X-File-Name': encodeURIComponent(file.name),
+            ...extra,
           }
         : body === undefined
           ? undefined
