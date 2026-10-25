@@ -38,3 +38,7 @@
   font-size: 0.8125rem;
   color: rgb(var(--c-danger-text));
 }
+
+.main > div {
+  min-width: 12rem;
+}

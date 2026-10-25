@@ -1,7 +1,3 @@
-/**
- * Коди помилок застосунку. Кожен код відповідає стабільному полю `type` у problem+json
- * (див. problem.ts та OpenAPI). Бізнес-логіка кидає DomainError і нічого не знає про HTTP.
- */
 export type ProblemCode =
   | 'bad-request'
   | 'validation'
@@ -10,6 +6,7 @@ export type ProblemCode =
   | 'forbidden'
   | 'lesson-locked'
   | 'not-enrolled'
+  | 'stream-not-started'
   | 'not-found'
   | 'email-taken'
   | 'already-enrolled'

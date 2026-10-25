@@ -3,6 +3,7 @@ import { Layout } from '../components/Layout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { AccountPage } from '../pages/AccountPage';
 import { CatalogPage } from '../pages/CatalogPage';
+import { CourseLearnPage } from '../pages/CourseLearnPage';
 import { CoursePage } from '../pages/CoursePage';
 import { HomePage } from '../pages/HomePage';
 import { IntroLessonPage } from '../pages/IntroLessonPage';
@@ -10,6 +11,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { MyEnrollmentsPage } from '../pages/MyEnrollmentsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RegisterPage } from '../pages/RegisterPage';
+import { StudentLessonPage } from '../pages/StudentLessonPage';
 import { TeacherCoursePage } from '../pages/TeacherCoursePage';
 import { TeacherLessonPage } from '../pages/TeacherLessonPage';
 import { TeacherCoursesPage } from '../pages/TeacherCoursesPage';
@@ -37,6 +39,22 @@ export function App() {
           element={
             <ProtectedRoute roles={['student']}>
               <MyEnrollmentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="learn/:id"
+          element={
+            <ProtectedRoute roles={['student']}>
+              <CourseLearnPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="lessons/:id"
+          element={
+            <ProtectedRoute roles={['student']}>
+              <StudentLessonPage />
             </ProtectedRoute>
           }
         />

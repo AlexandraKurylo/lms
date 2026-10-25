@@ -7,6 +7,7 @@ import {
 } from '../../features/enrollments/queries';
 import { ApiError } from '../../shared/api/client';
 import type { StreamInfo } from '../../shared/api/types';
+import { hasStarted } from '../../shared/lib/format';
 import styles from './EnrollButton.module.css';
 
 function errorText(error: unknown): string {
@@ -36,6 +37,11 @@ export function EnrollButton({ stream, courseId }: { stream: StreamInfo; courseI
     return (
       <div className={styles.box}>
         <span className="badge">Ви записані</span>
+        {hasStarted(stream.startsOn) && (
+          <Link to={`/learn/${courseId}`} className="btnSteel btnSm">
+            Перейти до навчання
+          </Link>
+        )}
         {own.status === 'active' && (
           <button
             type="button"

@@ -47,8 +47,11 @@ export function formatDate(iso: string): string {
   });
 }
 
+export function hasStarted(startsOn: string): boolean {
+  return startsOn <= new Date().toISOString().slice(0, 10);
+}
+
 export function seatsText(left: number): string {
   if (left === 0) return 'Місць немає';
   return `${left} ${plural(left, 'вільне місце', 'вільні місця', 'вільних місць')}`;
 }
-

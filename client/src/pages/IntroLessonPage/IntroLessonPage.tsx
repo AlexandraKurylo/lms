@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { BackLink } from '../../components/BackLink';
 import { ErrorMessage } from '../../components/ErrorMessage';
+import { LessonContent } from '../../components/LessonContent';
 import { Loading } from '../../components/Loading';
 import { MaterialList } from '../../components/MaterialList';
 import { useIntroLesson } from '../../features/catalog/queries';
@@ -21,7 +22,7 @@ export function IntroLessonPage() {
       <BackLink to={`/courses/${id}`}>До курсу</BackLink>
       <article className={`glassPanel ${styles.article}`}>
         <h1 className={`fontDisplay ${styles.title}`}>{lesson.title}</h1>
-        <div className={styles.content}>{lesson.content}</div>
+        <LessonContent>{lesson.content}</LessonContent>
         <MaterialList materials={lesson.materials} />
       </article>
     </div>

@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useCancelEnrollment } from '../../features/enrollments/queries';
+import { ProgressBar } from '../ProgressBar';
 import { ApiError } from '../../shared/api/client';
 import type { MyEnrollment } from '../../shared/api/types';
-import { ENROLLMENT_STATUS_LABEL, formatDate } from '../../shared/lib/format';
+import { ENROLLMENT_STATUS_LABEL, formatDate, hasStarted } from '../../shared/lib/format';
 import styles from './EnrollmentCard.module.css';
 
 export function EnrollmentCard({ enrollment }: { enrollment: MyEnrollment }) {
@@ -18,9 +19,20 @@ export function EnrollmentCard({ enrollment }: { enrollment: MyEnrollment }) {
         <span className={styles.muted}>
           {stream.title}: {formatDate(stream.startsOn)} — {formatDate(stream.endsOn)}
         </span>
+        {enrollment.status !== 'cancelled' && (
+          <ProgressBar percent={enrollment.progress.percent} label="Прогрес курсу" />
+        )}
       </div>
       <div className={styles.side}>
         <span className="badge">{ENROLLMENT_STATUS_LABEL[enrollment.status]}</span>
+        {enrollment.status !== 'cancelled' &&
+          (hasStarted(stream.startsOn) ? (
+            <Link to={`/learn/${course.id}`} className="btnSteel btnSm">
+              Відкрити курс
+            </Link>
+          ) : (
+            <span className={styles.muted}>Відкриється {formatDate(stream.startsOn)}</span>
+          ))}
         {enrollment.status === 'active' && (
           <button
             type="button"
