@@ -22,6 +22,7 @@ export interface CourseSeed {
   language: 'uk' | 'en' | 'pl';
   /** Чернетка: адміністратор її ще не опублікував. */
   draft?: boolean;
+  real?: 'python' | 'cpp';
 }
 
 export const COURSES: CourseSeed[] = [
@@ -71,8 +72,9 @@ export const COURSES: CourseSeed[] = [
   {
     title: 'Python для аналізу даних',
     topics: ['Data Science', 'Програмування'],
-    level: 'intermediate',
+    level: 'beginner',
     language: 'uk',
+    real: 'python',
   },
   {
     title: 'Machine Learning: перші моделі',
@@ -201,11 +203,11 @@ export const COURSES: CourseSeed[] = [
     language: 'pl',
   },
   {
-    title: 'Rust для системного програмування',
+    title: 'C++ на живому проєкті: SAMSKRTA',
     topics: ['Програмування'],
     level: 'advanced',
-    language: 'en',
-    draft: true,
+    language: 'uk',
+    real: 'cpp',
   },
   {
     title: 'Підготовка до технічного інтерв’ю',
