@@ -32,6 +32,7 @@ export class ApiError extends Error {
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
+  file?: File;
   signal?: AbortSignal;
 }
 
@@ -67,15 +68,22 @@ export async function api<T>(
   options: RequestOptions = {},
   retried = false,
 ): Promise<T> {
-  const { method = 'GET', body, signal } = options;
+  const { method = 'GET', body, file, signal } = options;
   let res: Response;
   try {
     res = await fetch(`/api${path}`, {
       method,
       credentials: 'same-origin',
       signal,
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: file
+        ? {
+            'Content-Type': 'application/octet-stream',
+            'X-File-Name': encodeURIComponent(file.name),
+          }
+        : body === undefined
+          ? undefined
+          : { 'Content-Type': 'application/json' },
+      body: file ?? (body === undefined ? undefined : JSON.stringify(body)),
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err;

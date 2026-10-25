@@ -197,6 +197,38 @@ export interface LessonView {
   previousLessonId: number | null;
   nextLessonId: number | null;
   progress: ProgressSummary;
+  submission: Submission | null;
 }
 
+export interface Submission {
+  comment: string;
+  file: { name: string } | null;
+  submittedAt: string;
+  grade: number | null;
+  feedback: string | null;
+  gradedAt: string | null;
+}
 
+export interface StreamStudent {
+  enrollmentId: number;
+  studentId: number;
+  name: string;
+  email: string;
+  status: 'active' | 'completed';
+  enrolledAt: string;
+  progress: ProgressSummary;
+  homework: { total: number; submitted: number; graded: number };
+}
+
+export interface StreamSubmission extends Submission {
+  id: number;
+  student: { id: number; name: string };
+  lesson: { id: number; position: number; title: string };
+}
+
+export type SubmissionFilter = 'all' | 'pending' | 'graded';
+
+export interface GradeInput {
+  grade: number;
+  feedback?: string;
+}

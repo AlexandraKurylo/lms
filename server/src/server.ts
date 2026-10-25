@@ -1,5 +1,6 @@
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
+import { createFileStorage } from './shared/storage.js';
 import { createPrisma } from './shared/db.js';
 import { createLogger } from './shared/logger.js';
 
@@ -10,6 +11,7 @@ const prisma = createPrisma(config.DATABASE_URL, { log: config.PRISMA_LOG });
 const app = createApp({
   logger,
   db: prisma,
+  storage: createFileStorage(config.UPLOAD_DIR),
   jwtSecret: config.JWT_SECRET,
   cookieSecure: config.COOKIE_SECURE,
   checkReady: async () => {

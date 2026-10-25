@@ -3,11 +3,15 @@ import { api } from '../../shared/api/client';
 import type {
   CourseInput,
   CourseStatus,
+  GradeInput,
   LessonInput,
   OwnCourse,
   OwnLesson,
   OwnStream,
   StreamInput,
+  StreamStudent,
+  StreamSubmission,
+  SubmissionFilter,
 } from '../../shared/api/types';
 
 const coursesKey = ['teacher', 'courses'] as const;
@@ -123,5 +127,44 @@ export function useSetCourseStatus(courseId: number) {
         body: { status },
       }),
     onSuccess: invalidate,
+  });
+}
+
+export function useOwnStream(id: number) {
+  return useQuery({
+    queryKey: ['teacher', 'stream', id] as const,
+    queryFn: ({ signal }) => api<OwnStream>(`/teacher/streams/${id}`, { signal }),
+    retry: false,
+  });
+}
+
+export function useStreamStudents(streamId: number) {
+  return useQuery({
+    queryKey: ['teacher', 'stream-students', streamId] as const,
+    queryFn: ({ signal }) =>
+      api<{ items: StreamStudent[] }>(`/teacher/streams/${streamId}/students`, { signal }),
+  });
+}
+
+export function useStreamSubmissions(streamId: number, status: SubmissionFilter) {
+  return useQuery({
+    queryKey: ['teacher', 'stream-submissions', streamId, status] as const,
+    queryFn: ({ signal }) =>
+      api<{ items: StreamSubmission[] }>(
+        `/teacher/streams/${streamId}/submissions?status=${status}`,
+        { signal },
+      ),
+  });
+}
+
+export function useGradeSubmission(streamId: number, submissionId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: GradeInput) =>
+      api<StreamSubmission>(`/teacher/submissions/${submissionId}/grade`, { method: 'PUT', body }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['teacher', 'stream-submissions', streamId] });
+      void qc.invalidateQueries({ queryKey: ['teacher', 'stream-students', streamId] });
+    },
   });
 }

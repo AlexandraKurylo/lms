@@ -13,6 +13,7 @@ export type ProblemCode =
   | 'stream-full'
   | 'stream-closed'
   | 'has-later-progress'
+  | 'submission-graded'
   | 'course-in-use'
   | 'course-incomplete'
   | 'idempotency-key-reuse'

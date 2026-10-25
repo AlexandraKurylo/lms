@@ -15,6 +15,8 @@ import { catalogRouter } from './modules/catalog/catalog.routes.js';
 import { createCatalogService } from './modules/catalog/catalog.service.js';
 import { createEnrollmentsService } from './modules/enrollments/enrollments.service.js';
 import { enrollmentsRouter } from './modules/enrollments/enrollments.routes.js';
+import { gradingRouter } from './modules/grading/grading.routes.js';
+import { createGradingService } from './modules/grading/grading.service.js';
 import { learningRouter } from './modules/learning/learning.routes.js';
 import { createLearningService } from './modules/learning/learning.service.js';
 import { createTeacherRepo } from './modules/teacher/teacher.repo.js';
@@ -23,6 +25,7 @@ import { createTeacherService } from './modules/teacher/teacher.service.js';
 import { healthRouter } from './modules/health/health.routes.js';
 import { createTokenService } from './shared/auth/tokens.js';
 import type { Db } from './shared/db.js';
+import { createFileStorage, type FileStorage } from './shared/storage.js';
 import { requestContext } from './shared/http/requestContext.js';
 import { errorHandler, notFoundHandler } from './shared/problem.js';
 import { createLogger } from './shared/logger.js';
@@ -34,6 +37,7 @@ export interface AppDeps {
   jwtSecret: string;
   cookieSecure: boolean;
   hasher: PasswordHasher;
+  storage: FileStorage;
 }
 
 const bcryptHasher: PasswordHasher = {
@@ -44,6 +48,7 @@ const bcryptHasher: PasswordHasher = {
 export function createApp(deps: Partial<AppDeps> = {}): Express {
   const logger = deps.logger ?? createLogger('silent');
   const checkReady = deps.checkReady ?? (async () => {});
+  const storage = deps.storage ?? createFileStorage('uploads');
 
   const app = express();
   app.disable('x-powered-by');
@@ -87,7 +92,14 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
       }),
     );
     app.use('/api', adminRouter({ service: createAdminService({ db: deps.db }), guards }));
-    app.use('/api', learningRouter({ service: createLearningService({ db: deps.db }), guards }));
+    app.use(
+      '/api',
+      gradingRouter({ service: createGradingService({ db: deps.db }), storage, guards }),
+    );
+    app.use(
+      '/api',
+      learningRouter({ service: createLearningService({ db: deps.db, storage }), storage, guards }),
+    );
     app.use(
       '/api',
       enrollmentsRouter({ service: createEnrollmentsService({ db: deps.db }), guards }),

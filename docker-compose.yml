@@ -30,6 +30,8 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-lms}:${POSTGRES_PASSWORD:-lms_dev_password}@db:5432/${POSTGRES_DB:-lms}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET потрібно задати в .env}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    volumes:
+      - lms_uploads:/data/uploads
     healthcheck:
       test:
         [
@@ -54,3 +56,5 @@ services:
 
 volumes:
   lms_pgdata:
+  lms_uploads:
+

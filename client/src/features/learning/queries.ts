@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../shared/api/client';
-import type { CourseProgress, LessonView, ProgressSummary } from '../../shared/api/types';
+import type {
+  CourseProgress,
+  LessonView,
+  ProgressSummary,
+  Submission,
+} from '../../shared/api/types';
 
 const progressKey = (courseId: number) => ['learning', 'progress', courseId] as const;
 const lessonKey = (id: number) => ['learning', 'lesson', id] as const;
@@ -30,5 +35,29 @@ export function useSetLessonDone(lessonId: number) {
       void qc.invalidateQueries({ queryKey: ['learning'] });
       void qc.invalidateQueries({ queryKey: ['my-enrollments'] });
     },
+  });
+}
+
+export function useSubmitHomework(lessonId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ comment, file }: { comment: string; file: File | null }) => {
+      if (file) {
+        await api<Submission>(`/lessons/${lessonId}/submission/file`, { method: 'PUT', file });
+      }
+      return api<Submission>(`/lessons/${lessonId}/submission`, {
+        method: 'PUT',
+        body: { comment },
+      });
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: lessonKey(lessonId) }),
+  });
+}
+
+export function useRemoveHomeworkFile(lessonId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<void>(`/lessons/${lessonId}/submission/file`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: lessonKey(lessonId) }),
   });
 }

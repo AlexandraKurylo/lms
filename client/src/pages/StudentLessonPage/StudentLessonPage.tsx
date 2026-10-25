@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { BackLink } from '../../components/BackLink';
 import { ErrorMessage } from '../../components/ErrorMessage';
 import { FormError } from '../../components/FormError';
+import { HomeworkForm } from '../../components/HomeworkForm';
 import { LessonContent } from '../../components/LessonContent';
 import { Loading } from '../../components/Loading';
 import { MaterialList } from '../../components/MaterialList';
@@ -39,6 +40,14 @@ export function StudentLessonPage() {
         <LessonContent>{lesson.content}</LessonContent>
         <MaterialList materials={lesson.materials} />
       </article>
+
+      {lesson.hasHomework && (
+        <HomeworkForm
+          key={`${lesson.id}-${lesson.submission?.submittedAt ?? 'new'}`}
+          lessonId={lesson.id}
+          submission={lesson.submission}
+        />
+      )}
 
       <div className={styles.actions}>
         <button

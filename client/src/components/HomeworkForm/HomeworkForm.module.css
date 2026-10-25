@@ -1,0 +1,79 @@
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.status {
+  font-size: 0.875rem;
+  color: rgb(var(--c-hinting) / 0.6);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.grade {
+  font-size: 1.125rem;
+  color: rgb(var(--c-crystal));
+}
+
+.feedback {
+  white-space: pre-wrap;
+  border-left: 3px solid rgb(var(--c-crystal) / 0.5);
+  padding-left: 0.75rem;
+}
+
+.answer {
+  white-space: pre-wrap;
+  font-size: 0.9375rem;
+  color: rgb(var(--c-hinting) / 0.75);
+}
+
+.attach {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.file {
+  color: rgb(var(--c-crystal));
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.hint {
+  font-size: 0.8125rem;
+  color: rgb(var(--c-hinting) / 0.6);
+}
+
+.error {
+  font-size: 0.8125rem;
+  color: rgb(var(--c-danger-text));
+}
