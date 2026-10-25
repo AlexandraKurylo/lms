@@ -13,6 +13,7 @@ import {
   TEACHER_BIOS,
   TOPICS,
 } from './seedData.js';
+import { REAL_COURSES } from './seedContent/index.js';
 
 /** Пароль усіх демо-акаунтів. Лише для розробки: у production сид не запускається. */
 export const DEMO_PASSWORD = 'Demo12345!';
@@ -142,12 +143,16 @@ export interface SeedData {
 }
 
 const DAY = 86_400_000;
-const BASE = Date.UTC(2026, 0, 1);
+const startOfToday = () => {
+  const now = new Date();
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+};
+type Phase = 'finished' | 'running' | 'upcoming';
 const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const isoTime = (ms: number) => new Date(ms).toISOString();
 
 /** Чиста функція: збирає всі дані в пам'яті, до бази не звертається. */
-export function buildSeed(passwordHash: string, seed = 20260101): SeedData {
+export function buildSeed(passwordHash: string, seed = 20260101, today = startOfToday()): SeedData {
   const rng = createRng(seed);
 
   // теми
@@ -200,10 +205,13 @@ export function buildSeed(passwordHash: string, seed = 20260101): SeedData {
   const courseTopics: SeedData['courseTopics'] = [];
   COURSES.forEach((c, i) => {
     const id = i + 1;
+    const real = c.real ? REAL_COURSES[c.real] : undefined;
     courses.push({
       id,
       title: c.title,
-      description: `${c.title}. Курс з практичними завданнями, розбором прикладів і підтримкою викладача.`,
+      description:
+        real?.description ??
+        `${c.title}. Курс з практичними завданнями, розбором прикладів і підтримкою викладача.`,
       language: c.language,
       level: c.level,
       teacherId: teacherIds[i % teacherIds.length]!,
@@ -218,11 +226,15 @@ export function buildSeed(passwordHash: string, seed = 20260101): SeedData {
   });
 
   // уроки: рівно 500, у кожному курсі 8–18
-  const sizes = courses.map(() => 8);
+  const realOf = (courseIndex: number) => {
+    const key = COURSES[courseIndex]?.real;
+    return key ? REAL_COURSES[key] : undefined;
+  };
+  const sizes = courses.map((_, i) => realOf(i)?.lessons.length ?? 8);
   let left = SEED_COUNTS.lessons - sizes.reduce((a, b) => a + b, 0);
   while (left > 0) {
     const i = rng.int(0, sizes.length - 1);
-    if (sizes[i]! < 18) {
+    if (!realOf(i) && sizes[i]! < 18) {
       sizes[i]!++;
       left--;
     }
@@ -233,18 +245,21 @@ export function buildSeed(passwordHash: string, seed = 20260101): SeedData {
     for (let p = 1; p <= sizes[ci]!; p++) {
       const id = lessons.length + 1;
       const intro = p === 1;
+      const real = realOf(ci);
+      const realLesson = real?.lessons[p - 1];
       lessons.push({
         id,
         courseId: course.id,
         position: p,
-        title: intro ? 'Вступ до курсу' : `${rng.pick(LESSON_PHRASES)} №${p}`,
-        content: [
-          rng.pick(LESSON_SENTENCES),
-          rng.pick(LESSON_SENTENCES),
-          rng.pick(LESSON_SENTENCES),
-        ].join(' '),
+        title:
+          realLesson?.title ?? (intro ? 'Вступ до курсу' : `${rng.pick(LESSON_PHRASES)} №${p}`),
+        content:
+          realLesson?.content ??
+          [rng.pick(LESSON_SENTENCES), rng.pick(LESSON_SENTENCES), rng.pick(LESSON_SENTENCES)].join(
+            ' ',
+          ),
         freeIntro: intro,
-        homework: !intro && rng.chance(0.3),
+        homework: real ? real.homeworkPositions.includes(p) : !intro && rng.chance(0.3),
       });
       const count = rng.int(1, 3);
       for (let m = 0; m < count; m++) {
@@ -260,22 +275,56 @@ export function buildSeed(passwordHash: string, seed = 20260101): SeedData {
     }
   });
 
-  // потоки: 80, лише для опублікованих курсів (по 2 на курс, решта — додаткові)
+  const todayMs = today;
+  const phaseOf = (s: { startsOn: string; endsOn: string }): Phase => {
+    if (Date.parse(s.startsOn) > todayMs) return 'upcoming';
+    if (Date.parse(s.endsOn) < todayMs) return 'finished';
+    return 'running';
+  };
+  const randomPhase = (): Phase => {
+    const r = rng.next();
+    return r < 0.25 ? 'finished' : r < 0.55 ? 'running' : 'upcoming';
+  };
+  const windowFor = (phase: Phase) => {
+    const length = rng.int(30, 90);
+    if (phase === 'finished') {
+      const end = todayMs - rng.int(3, 60) * DAY;
+      return { start: end - length * DAY, end };
+    }
+    if (phase === 'running') {
+      const start = todayMs - rng.int(3, length - 3) * DAY;
+      return { start, end: start + length * DAY };
+    }
+    const start = todayMs + rng.int(3, 120) * DAY;
+    return { start, end: start + length * DAY };
+  };
+
   const published = courses.filter((c) => c.status === 'published');
   const streams: StreamRow[] = [];
-  const addStream = (course: CourseRow, n: number) => {
-    const start = BASE + rng.int(-120, 240) * DAY;
+  const addStream = (
+    course: CourseRow,
+    n: number,
+    window: { start: number; end: number } = windowFor(randomPhase()),
+  ) => {
     streams.push({
       id: streams.length + 1,
       courseId: course.id,
       title: `Потік ${n}`,
-      startsOn: isoDate(start),
-      endsOn: isoDate(start + rng.int(30, 90) * DAY),
+      startsOn: isoDate(window.start),
+      endsOn: isoDate(window.end),
       capacity: rng.int(8, 25),
     });
   };
   published.forEach((c) => {
-    addStream(c, 1);
+    const key = COURSES[c.id - 1]?.real;
+    if (key) {
+      REAL_COURSES[key].streams.forEach((s, i) => {
+        const start = todayMs + s.startsInDays * DAY;
+        addStream(c, i + 1, { start, end: start + s.lengthDays * DAY });
+      });
+      return;
+    }
+    addStream(c, 1, windowFor(rng.chance(0.5) ? 'running' : 'upcoming'));
     addStream(c, 2);
   });
   let extra = 3;
@@ -290,7 +339,6 @@ export function buildSeed(passwordHash: string, seed = 20260101): SeedData {
     streamsByCourse.set(s.courseId, list);
   }
 
-  // записи: кожен студент на 4 різних курси, по одному потоку на курс
   const enrollments: EnrollmentRow[] = [];
   const perStudent = SEED_COUNTS.enrollments / SEED_COUNTS.students;
   for (const studentId of studentIds) {
@@ -298,27 +346,40 @@ export function buildSeed(passwordHash: string, seed = 20260101): SeedData {
     while (chosen.size < perStudent) chosen.add(rng.pick(published).id);
     for (const courseId of chosen) {
       const stream = rng.pick(streamsByCourse.get(courseId)!);
+      const phase = phaseOf(stream);
       const r = rng.next();
+      const status: EnrollmentRow['status'] =
+        phase === 'finished'
+          ? r < 0.8
+            ? 'completed'
+            : 'cancelled'
+          : r < 0.88
+            ? 'active'
+            : 'cancelled';
+      const enrolledAt =
+        phase === 'upcoming'
+          ? todayMs - rng.int(0, 20) * DAY
+          : Date.parse(stream.startsOn) - rng.int(1, 30) * DAY;
       enrollments.push({
         id: enrollments.length + 1,
         studentId,
         streamId: stream.id,
         courseId,
-        status: r < 0.7 ? 'active' : r < 0.85 ? 'completed' : 'cancelled',
-        enrolledAt: isoTime(Date.parse(stream.startsOn) - rng.int(1, 30) * DAY),
+        status,
+        enrolledAt: isoTime(enrolledAt),
       });
     }
   }
 
-  // місткість: не менша за кількість зайнятих місць; кілька потоків — особливі
   const occupied = new Map<number, number>();
   for (const e of enrollments) {
     if (e.status !== 'cancelled') occupied.set(e.streamId, (occupied.get(e.streamId) ?? 0) + 1);
   }
   const taken = (s: StreamRow) => occupied.get(s.id) ?? 0;
   for (const s of streams) s.capacity = Math.max(s.capacity, taken(s) + rng.int(1, 6));
-  const byLoad = [...streams].sort((a, b) => taken(b) - taken(a) || a.id - b.id);
-  // три повні потоки та один із єдиним вільним місцем — для демонстрації й тестів
+  const byLoad = streams
+    .filter((s) => phaseOf(s) !== 'finished')
+    .sort((a, b) => taken(b) - taken(a) || a.id - b.id);
   for (const s of byLoad.slice(0, 3)) s.capacity = taken(s);
   const lastSeat = byLoad[3]!;
   lastSeat.capacity = taken(lastSeat) + 1;
@@ -336,19 +397,26 @@ export function buildSeed(passwordHash: string, seed = 20260101): SeedData {
   for (const e of enrollments) {
     const list = lessonsByCourse.get(e.courseId)!;
     const stream = streamById.get(e.streamId)!;
+    const startMs = Date.parse(stream.startsOn);
+    const windowDays = Math.max(
+      0,
+      Math.floor((Math.min(todayMs, Date.parse(stream.endsOn)) - startMs) / DAY),
+    );
     const done =
-      e.status === 'completed'
-        ? list.length
-        : e.status === 'active'
-          ? rng.int(0, list.length - 1)
-          : rng.int(0, Math.min(2, list.length - 1));
+      phaseOf(stream) === 'upcoming'
+        ? 0
+        : e.status === 'completed'
+          ? list.length
+          : e.status === 'active'
+            ? rng.int(0, Math.min(list.length - 1, Math.floor(windowDays / 2)))
+            : rng.int(0, Math.min(2, list.length - 1, windowDays));
     for (let i = 0; i < done; i++) {
       const lesson = list[i]!;
-      const at = Date.parse(stream.startsOn) + (i + 1) * rng.int(1, 3) * DAY;
+      const at = startMs + Math.floor((windowDays * (i + 1)) / (done + 1)) * DAY;
       progress.push({ studentId: e.studentId, lessonId: lesson.id, completedAt: isoTime(at) });
       if (lesson.homework && rng.chance(0.7)) {
         const graded = rng.chance(0.6);
-        const gradedAt = at + rng.int(1, 4) * DAY;
+        const gradedAt = Math.min(at + rng.int(1, 4) * DAY, todayMs);
         submissions.push({
           id: submissions.length + 1,
           studentId: e.studentId,

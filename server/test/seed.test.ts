@@ -57,6 +57,87 @@ describe('buildSeed (без бази)', () => {
   });
 });
 
+describe.each([Date.UTC(2026, 9, 24), Date.UTC(2027, 2, 5)])(
+  'дати сиду відносно дня запуску (%d)',
+  (today) => {
+    const data = buildSeed('hash', 20260101, today);
+    const streamOf = new Map(data.streams.map((s) => [s.id, s]));
+    const finished = (streamId: number) => Date.parse(streamOf.get(streamId)!.endsOn) < today;
+
+    it('на завершеному потоці немає активних записів, а завершені записи лише на завершених потоках', () => {
+      for (const e of data.enrollments) {
+        if (e.status === 'active') expect(finished(e.streamId)).toBe(false);
+        if (e.status === 'completed') expect(finished(e.streamId)).toBe(true);
+      }
+    });
+
+    it('жодна подія не датована майбутнім', () => {
+      for (const e of data.enrollments) expect(Date.parse(e.enrolledAt)).toBeLessThanOrEqual(today);
+      for (const p of data.progress) expect(Date.parse(p.completedAt)).toBeLessThanOrEqual(today);
+      for (const s of data.submissions) {
+        expect(Date.parse(s.submittedAt)).toBeLessThanOrEqual(today);
+        if (s.gradedAt) expect(Date.parse(s.gradedAt)).toBeLessThanOrEqual(today);
+      }
+    });
+
+    it('на потоках, що ще не почалися, немає прогресу', () => {
+      const upcoming = new Set(
+        data.enrollments
+          .filter((e) => Date.parse(streamOf.get(e.streamId)!.startsOn) > today)
+          .map((e) => e.studentId + ':' + e.courseId),
+      );
+      const lessonCourse = new Map(data.lessons.map((l) => [l.id, l.courseId]));
+      for (const p of data.progress) {
+        expect(upcoming.has(p.studentId + ':' + lessonCourse.get(p.lessonId))).toBe(false);
+      }
+    });
+
+    it('кожен опублікований курс має потік, на який ще можна записатися', () => {
+      for (const c of data.courses.filter((x) => x.status === 'published')) {
+        const open = data.streams.filter(
+          (s) => s.courseId === c.id && Date.parse(s.endsOn) >= today,
+        );
+        expect(open.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('повні потоки та потік з одним місцем ще відкриті для запису', () => {
+      const occupied = new Map<number, number>();
+      for (const e of data.enrollments) {
+        if (e.status !== 'cancelled') occupied.set(e.streamId, (occupied.get(e.streamId) ?? 0) + 1);
+      }
+      const free = (s: { id: number; capacity: number }) => s.capacity - (occupied.get(s.id) ?? 0);
+      const open = data.streams.filter((s) => Date.parse(s.endsOn) >= today);
+      expect(open.filter((s) => free(s) === 0).length).toBeGreaterThanOrEqual(3);
+      expect(open.filter((s) => free(s) === 1).length).toBeGreaterThanOrEqual(1);
+    });
+  },
+);
+
+describe('справжній контент курсів', () => {
+  const data = buildSeed('hash');
+  const lessonsOf = (title: string) => {
+    const course = data.courses.find((c) => c.title === title)!;
+    return data.lessons.filter((l) => l.courseId === course.id);
+  };
+
+  it('курс з Python має 6 уроків, два з домашкою', () => {
+    const lessons = lessonsOf('Python для аналізу даних');
+    expect(lessons).toHaveLength(6);
+    expect(lessons.filter((l) => l.homework).map((l) => l.position)).toEqual([2, 3]);
+    expect(lessons[0]!.freeIntro).toBe(true);
+  });
+
+  it('курс із C++ має 20 уроків із повним текстом і не є чернеткою', () => {
+    const course = data.courses.find((c) => c.title.startsWith('C++'))!;
+    expect(course.status).toBe('published');
+    const lessons = lessonsOf(course.title);
+    expect(lessons).toHaveLength(20);
+    for (const l of lessons) expect(l.content.length).toBeGreaterThan(5000);
+    expect(lessons.every((l) => l.content.length <= 50_000)).toBe(true);
+  });
+});
+
 describe('writeSeed (реальна PostgreSQL)', () => {
   let pool: InstanceType<typeof Pool>;
 
