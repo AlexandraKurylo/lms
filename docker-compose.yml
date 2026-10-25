@@ -16,5 +16,41 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    profiles: ['app']
+    build: ./server
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER:-lms}:${POSTGRES_PASSWORD:-lms_dev_password}@db:5432/${POSTGRES_DB:-lms}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET потрібно задати в .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:4000/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    profiles: ['app']
+    build: ./client
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '${WEB_PORT:-8080}:80'
+
 volumes:
   lms_pgdata:
