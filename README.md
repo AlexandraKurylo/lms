@@ -1,5 +1,9 @@
 # LMS — платформа онлайн-курсів
 
+# LMS — платформа онлайн-курсів
+
+[![CI](https://github.com/AlexandraKurylo/lms/actions/workflows/ci.yml/badge.svg)](https://github.com/AlexandraKurylo/lms/actions/workflows/ci.yml)
+
 Курси з уроками, матеріалами та відстеженням прогресу. Потоки мають обмежену кількість місць, запис на них — конкурентна операція: останнє місце дістається лише одному студенту.
 
 Стек: React (Vite) · TypeScript · Express 5 · PostgreSQL 16 · Prisma · zod · Docker.
