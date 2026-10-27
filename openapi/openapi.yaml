@@ -856,11 +856,20 @@ paths:
         Потік неопублікованого курсу виглядає як неіснуючий (404).
         Помилки 409: `stream-full` (місць немає), `stream-closed` (потік завершився),
         `already-enrolled` (студент уже записаний на цей курс).
+
+        Заголовок `Idempotency-Key` необов'язковий (ADR 0014). З ним повтор того самого запиту
+        повертає збережену відповідь із заголовком `Idempotency-Replayed: true` і не створює другий запис;
+        той самий ключ з іншим запитом дає 422 `idempotency-key-reuse`. Ключ діє 24 години,
+        помилки під ключем не зберігаються.
       parameters:
         - $ref: '#/components/parameters/StreamId'
+        - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '201':
-          description: Запис створено
+          description: Запис створено (або відтворено збережену відповідь)
+          headers:
+            Idempotency-Replayed:
+              $ref: '#/components/headers/Idempotency-Replayed'
           content:
             application/json:
               schema:
@@ -875,6 +884,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
         '500':
           $ref: '#/components/responses/InternalError'
   /me/courses/{id}/progress:
@@ -1530,6 +1541,12 @@ components:
         type: string
         examples:
           - 3f0c1d6e-8a37-4e0b-9d3e-2a6a1c9b7f10
+    Idempotency-Replayed:
+      description: Дорівнює `true`, якщо відповідь відтворено за збереженим `Idempotency-Key`, а дію не виконано повторно.
+      schema:
+        type: string
+        enum:
+          - 'true'
     Set-Cookie:
       description: Сесійний cookie `lms_session` (HttpOnly; SameSite=Lax; Secure у production; 15 хвилин) і `lms_refresh` (HttpOnly; SameSite=Strict; Path=/api/auth; 7 днів).
       schema:
@@ -2630,6 +2647,16 @@ components:
                   type: string
                   format: date
   parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Ключ ідемпотентності (1–255 видимих ASCII-символів без пробілів); діє 24 години для користувача.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+        pattern: '^[\x21-\x7e]+$'
     LessonId:
       name: id
       in: path

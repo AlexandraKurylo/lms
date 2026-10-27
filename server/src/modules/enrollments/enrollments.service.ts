@@ -1,5 +1,6 @@
 import { DomainError, notFound } from '../../shared/errors.js';
 import { inTransaction, isUniqueViolation, type Db } from '../../shared/db.js';
+import { runIdempotent, type IdempotentResult } from '../../shared/idempotency.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import {
   createEnrollmentsRepo,
@@ -47,6 +48,17 @@ export function createEnrollmentsService(deps: { db: Db; today?: () => string })
         }
         throw err;
       }
+    },
+
+    enrollIdempotent(
+      user: AuthUser,
+      streamId: number,
+      idem: { key: string; fingerprint: string },
+    ): Promise<IdempotentResult> {
+      return runIdempotent(db, { userId: user.id, ...idem }, async (tx) => ({
+        status: 201,
+        body: await createEnrollmentsService({ db: tx, today }).enroll(user, streamId),
+      }));
     },
 
     async cancel(user: AuthUser, enrollmentId: number): Promise<void> {

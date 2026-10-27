@@ -11,18 +11,19 @@
 - **Наслідки** — і позитивні, і негативні.
 - **Умова перегляду** — за яких обставин рішення перестане бути правильним.
 
-| №    | Рішення                                                               |
-| ---- | --------------------------------------------------------------------- |
-| 0001 | [PostgreSQL як СУБД](0001-postgresql.md)                              |
-| 0002 | [Сесія в httpOnly cookie](0002-session-cookie.md)                     |
-| 0003 | [Курсорна пагінація](0003-keyset-pagination.md)                       |
-| 0004 | [Запис на потік: блокування рядка потоку](0004-enrollment-locking.md) |
-| 0005 | [Валідація запитів через zod](0005-zod-validation.md) |
-| 0006 | [Помилки API у форматі problem+json](0006-problem-json.md)            |
-| 0007 | [Прогрес обчислюється, а не зберігається](0007-progress-computed.md) |
-| 0008 | [Prisma для доступу до PostgreSQL і міграцій](0008-prisma.md)         |
-| 0009 | [Файли за інтерфейсом FileStorage](0009-file-storage.md) |
-| 0010 | [Шари routes → service → repo, createApp(deps)](0010-layered-di.md) |
+| №    | Рішення                                                                         |
+| ---- | ------------------------------------------------------------------------------- |
+| 0001 | [PostgreSQL як СУБД](0001-postgresql.md)                                        |
+| 0002 | [Сесія в httpOnly cookie](0002-session-cookie.md)                               |
+| 0003 | [Курсорна пагінація](0003-keyset-pagination.md)                                 |
+| 0004 | [Запис на потік: блокування рядка потоку](0004-enrollment-locking.md)           |
+| 0005 | [Валідація запитів через zod](0005-zod-validation.md)                           |
+| 0006 | [Помилки API у форматі problem+json](0006-problem-json.md)                      |
+| 0007 | [Прогрес обчислюється, а не зберігається](0007-progress-computed.md)            |
+| 0008 | [Prisma для доступу до PostgreSQL і міграцій](0008-prisma.md)                   |
+| 0009 | [Файли за інтерфейсом FileStorage](0009-file-storage.md)                        |
+| 0010 | [Шари routes → service → repo, createApp(deps)](0010-layered-di.md)             |
 | 0011 | [Інтеграційні тести на справжній PostgreSQL](0011-integration-tests-real-db.md) |
-| 0012 | [Access-cookie і refresh-токен з ротацією](0012-refresh-rotation.md)  |
-| 0013 | [Чужий ресурс: 404, а не 403](0013-403-vs-404.md)                     |
+| 0012 | [Access-cookie і refresh-токен з ротацією](0012-refresh-rotation.md)            |
+| 0013 | [Чужий ресурс: 404, а не 403](0013-403-vs-404.md)                               |
+| 0014 | [Idempotency-Key для запису на потік](0014-idempotency-key.md)                  |
