@@ -1,7 +1,3 @@
--- 0001_init: початкова схема LMS (базова міграція Prisma).
--- Prisma не вміє описувати часткові індекси, DEFERRABLE-обмеження, CHECK та індекс lower(email),
--- тому ці частини живуть тут, у SQL. Решту описує prisma/schema.prisma.
--- Прогрес НЕ зберігається у відсотках: він обчислюється із lesson_progress.
 CREATE TYPE user_role         AS ENUM ('student', 'teacher', 'admin');
 CREATE TYPE course_level      AS ENUM ('beginner', 'intermediate', 'advanced');
 CREATE TYPE course_status     AS ENUM ('draft', 'published');

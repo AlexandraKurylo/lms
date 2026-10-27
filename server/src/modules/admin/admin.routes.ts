@@ -5,7 +5,6 @@ import { courseIdParams } from '../teacher/teacher.schemas.js';
 import { assignTeacherSchema, setStatusSchema } from './admin.schemas.js';
 import type { AdminService } from './admin.service.js';
 
-/** Лише адміністратор: студент і викладач отримують 403. */
 export function adminRouter(deps: {
   service: AdminService;
   guards: Pick<AuthGuards, 'requireRole'>;
