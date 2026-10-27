@@ -1,6 +1,5 @@
 import { materialSelect, toMaterialView, type MaterialView } from '../materials/materials.view.js';
-import type { CourseLevel, Prisma } from '@prisma/client';
-import type { Db } from '../../shared/db.js';
+import { Prisma, type Db } from '../../shared/db.js';
 
 export interface CourseSummary {
   id: number;
@@ -75,41 +74,49 @@ export function createCatalogRepo(db: Db) {
 
     /**
      * Каталог опублікованих курсів, відсортований за (title, id).
-     * Умови додаються лише ті, що задані. Курсорна умова «title більший, або title той самий
-     * і id більший» збігається з порядком індексу courses_catalog_idx (title, id).
+     * Спершу сирим SQL вибираються id однієї сторінки: курсор записано як порівняння рядків
+     * (title, id) > (...), і PostgreSQL бере його як умову індексу courses_catalog_idx,
+     * тому глибока сторінка читає стільки ж рядків, що й перша (docs/perf/catalog-explain.md).
+     * Умова з OR, яку будує Prisma, так не працює: індекс проходиться з початку.
+     * Потім Prisma довантажує курси пачкою разом із зв'язаними даними (немає N+1).
      * Повертає до limit + 1 рядків: зайвий лише показує, що є наступна сторінка.
-     * Зв'язані дані (викладач, теми, кількість уроків) Prisma довантажує окремими запитами
-     * ПАЧКАМИ, тому кількість запитів не залежить від розміру сторінки (немає N+1).
      */
     async listPublished(filters: CourseFilters): Promise<CourseSummary[]> {
-      const and: Prisma.CourseWhereInput[] = [];
+      const conditions: Prisma.Sql[] = [Prisma.sql`c.status = 'published'`];
 
       // EXISTS: курс із двома темами не дублюється у видачі
-      if (filters.topic !== undefined) and.push({ topics: { some: { topicId: filters.topic } } });
-      if (filters.level !== undefined) and.push({ level: filters.level as CourseLevel });
-      if (filters.language !== undefined) and.push({ language: filters.language });
+      if (filters.topic !== undefined) {
+        conditions.push(
+          Prisma.sql`EXISTS (SELECT 1 FROM course_topics ct WHERE ct.course_id = c.id AND ct.topic_id = ${filters.topic})`,
+        );
+      }
+      if (filters.level !== undefined) {
+        conditions.push(Prisma.sql`c.level = ${filters.level}::course_level`);
+      }
+      if (filters.language !== undefined) {
+        conditions.push(Prisma.sql`c.language = ${filters.language}`);
+      }
       if (filters.q !== undefined) {
-        const pattern = escapeLike(filters.q);
-        and.push({
-          OR: [
-            { title: { contains: pattern, mode: 'insensitive' } },
-            { description: { contains: pattern, mode: 'insensitive' } },
-          ],
-        });
+        const pattern = `%${escapeLike(filters.q)}%`;
+        conditions.push(Prisma.sql`(c.title ILIKE ${pattern} OR c.description ILIKE ${pattern})`);
       }
       if (filters.after) {
-        and.push({
-          OR: [
-            { title: { gt: filters.after.title } },
-            { title: filters.after.title, id: { gt: filters.after.id } },
-          ],
-        });
+        conditions.push(
+          Prisma.sql`(c.title, c.id) > (${filters.after.title}, ${filters.after.id})`,
+        );
       }
 
+      const page = await db.$queryRaw<{ id: number }[]>`
+        SELECT c.id
+        FROM courses c
+        WHERE ${Prisma.join(conditions, ' AND ')}
+        ORDER BY c.title, c.id
+        LIMIT ${filters.limit + 1}`;
+      if (page.length === 0) return [];
+
       const rows = await db.course.findMany({
-        where: { status: 'published', AND: and },
+        where: { id: { in: page.map((row) => row.id) } },
         orderBy: [{ title: 'asc' }, { id: 'asc' }],
-        take: filters.limit + 1,
         select: {
           id: true,
           title: true,
