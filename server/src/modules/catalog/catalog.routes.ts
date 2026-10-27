@@ -3,7 +3,6 @@ import { parseWith } from '../../shared/validate.js';
 import { courseIdParamsSchema, listCoursesQuerySchema } from './catalog.schemas.js';
 import type { CatalogService } from './catalog.service.js';
 
-/** Публічний каталог: доступний гостям, тому жодних guard-ів тут немає. */
 export function catalogRouter(deps: { service: CatalogService }): Router {
   const router = Router();
 

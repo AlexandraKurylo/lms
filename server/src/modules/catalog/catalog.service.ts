@@ -20,10 +20,6 @@ export interface CoursePage extends Omit<CourseRecord, 'teacherId'> {
 export function createCatalogService(deps: { repo: CatalogRepo }) {
   const { repo } = deps;
 
-  /**
-   * Чернетку бачать лише адміністратор і викладач-власник. Для всіх інших вона «не існує»:
-   * відповідаємо 404, а не 403, щоб не підтверджувати, що такий курс є.
-   */
   async function loadVisibleCourse(
     id: number,
     viewer: AuthUser | undefined,
