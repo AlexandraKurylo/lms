@@ -71,6 +71,7 @@ model User {
   progress    LessonProgress[]
   submissions Submission[]
   refreshTokens RefreshToken[]
+  idempotencyKeys IdempotencyKey[]
 
   @@index([role], map: "users_role_idx")
   @@map("users")
@@ -247,4 +248,21 @@ model RefreshToken {
   @@index([familyId], map: "refresh_tokens_family_idx")
   @@index([userId], map: "refresh_tokens_user_idx")
   @@map("refresh_tokens")
+}
+
+// Збережені відповіді на запити з заголовком Idempotency-Key (ADR 0014).
+// Запис з'являється в тій самій транзакції, що й дія, тому «дія виконана» і «ключ збережено» не розходяться.
+model IdempotencyKey {
+  userId      Int      @map("user_id")
+  key         String
+  fingerprint String
+  statusCode  Int      @map("status_code") @db.SmallInt
+  response    Json
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userId, key], map: "idempotency_keys_pkey")
+  @@index([createdAt], map: "idempotency_keys_created_at_idx")
+  @@map("idempotency_keys")
 }
