@@ -1,7 +1,5 @@
 # LMS — платформа онлайн-курсів
 
-# LMS — платформа онлайн-курсів
-
 [![CI](https://github.com/AlexandraKurylo/lms/actions/workflows/ci.yml/badge.svg)](https://github.com/AlexandraKurylo/lms/actions/workflows/ci.yml)
 
 Курси з уроками, матеріалами та відстеженням прогресу. Потоки мають обмежену кількість місць, запис на них — конкурентна операція: останнє місце дістається лише одному студенту.
@@ -117,6 +115,17 @@ client/    React-застосунок
 openapi/   опис API (OpenAPI 3.1)
 docs/adr/  архітектурні рішення
 ```
+
+## Резервне копіювання
+
+```bash
+cd server
+npm run db:backup    # копія бази й файлів користувачів у backups/
+npm run db:verify    # перевірка, що копію можна відновити
+npm run db:restore   # відновлення з найновішої копії
+```
+
+Докладно: [docs/backup.md](docs/backup.md).
 
 ## Документація
 

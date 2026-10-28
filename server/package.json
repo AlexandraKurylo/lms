@@ -24,7 +24,10 @@
     "db:deploy": "dotenv -e ../.env -- prisma migrate deploy",
     "db:reset": "dotenv -e ../.env -- prisma migrate reset --force",
     "db:seed": "tsx --env-file=../.env src/db/seed.ts",
-    "db:studio": "dotenv -e ../.env -- prisma studio"
+    "db:studio": "dotenv -e ../.env -- prisma studio",
+    "db:backup": "tsx --env-file=../.env src/backup/backup.ts",
+    "db:verify": "tsx --env-file=../.env src/backup/verify.ts",
+    "db:restore": "tsx --env-file=../.env src/backup/restore.ts"
   },
   "prisma": {
     "schema": "prisma/schema.prisma",
