@@ -1,241 +1,44 @@
-export type Level = 'beginner' | 'intermediate' | 'advanced';
-export type StreamPhase = 'upcoming' | 'running' | 'finished';
+import type { components } from './schema';
 
-export interface Topic {
-  id: number;
-  name: string;
-}
+type Schemas = components['schemas'];
 
-export interface TeacherRef {
-  id: number;
-  name: string;
-}
+export type Level = Schemas['Level'];
+export type Role = Schemas['Role'];
+export type Topic = Schemas['Topic'];
+export type TeacherRef = Schemas['TeacherRef'];
+export type User = Schemas['User'];
 
-export interface CourseSummary {
-  id: number;
-  title: string;
-  description: string;
-  level: Level;
-  language: string;
-  teacher: TeacherRef | null;
-  topics: string[];
-  lessonCount: number;
-}
+export type CourseSummary = Schemas['CourseSummary'];
+export type CourseList = Schemas['CourseList'];
+export type LessonOutline = Schemas['LessonOutline'];
+export type StreamInfo = Schemas['StreamInfo'];
+export type StreamPhase = StreamInfo['phase'];
+export type CoursePage = Schemas['CoursePage'];
+export type Material = Schemas['Material'];
+export type IntroLesson = Schemas['IntroLesson'];
 
-export interface CourseList {
-  items: CourseSummary[];
-  nextCursor: string | null;
-}
+export type Enrollment = Schemas['Enrollment'];
+export type EnrollmentStatus = Enrollment['status'];
+export type MyEnrollment = Schemas['MyEnrollment'];
 
-export interface LessonOutline {
-  id: number;
-  position: number;
-  title: string;
-  isFreeIntro: boolean;
-  hasHomework: boolean;
-}
+export type OwnCourse = Schemas['OwnCourse'];
+export type CourseStatus = OwnCourse['status'];
+export type OwnStream = Schemas['OwnStream'];
+export type OwnLesson = Schemas['OwnLesson'];
 
-export interface StreamInfo {
-  id: number;
-  title: string;
-  startsOn: string;
-  endsOn: string;
-  capacity: number;
-  seatsTaken: number;
-  seatsLeft: number;
-  phase: StreamPhase;
-}
+export type CourseInput = Required<Schemas['CourseInput']>;
+export type LessonInput = Required<Schemas['LessonInput']>;
+export type StreamInput = Schemas['StreamInput'];
+export type LinkMaterialInput = Schemas['CreateLinkMaterialRequest'];
+export type GradeInput = Schemas['GradeRequest'];
 
-export interface CoursePage {
-  id: number;
-  title: string;
-  description: string;
-  level: Level;
-  language: string;
-  status: 'draft' | 'published';
-  sequentialLessons: boolean;
-  teacher: { id: number; name: string; bio: string | null } | null;
-  topics: Topic[];
-  lessons: LessonOutline[];
-  streams: StreamInfo[];
-}
+export type ProgressSummary = Schemas['ProgressSummary'];
+export type CourseProgress = Schemas['CourseProgress'];
+export type LessonProgressItem = CourseProgress['lessons'][number];
+export type LessonView = Schemas['LessonView'];
+export type Submission = Schemas['Submission'];
 
-export interface Material {
-  id: number;
-  title: string;
-  kind: 'video' | 'article' | 'file' | 'link';
-  url: string;
-  fileName: string | null;
-}
-
-export interface LinkMaterialInput {
-  title: string;
-  kind: 'video' | 'article' | 'link';
-  url: string;
-}
-
-export interface IntroLesson {
-  id: number;
-  position: number;
-  title: string;
-  content: string;
-  materials: Material[];
-}
-
-export type Role = 'student' | 'teacher' | 'admin';
-
-export interface User {
-  id: number;
-  email: string;
-  name: string;
-  role: Role;
-}
-
-export type EnrollmentStatus = 'active' | 'completed' | 'cancelled';
-
-export interface Enrollment {
-  id: number;
-  streamId: number;
-  courseId: number;
-  status: EnrollmentStatus;
-  enrolledAt: string;
-}
-
-export interface MyEnrollment extends Enrollment {
-  course: { id: number; title: string };
-  stream: { id: number; title: string; startsOn: string; endsOn: string };
-  progress: ProgressSummary;
-}
-
-export type CourseStatus = 'draft' | 'published';
-
-export interface OwnCourse {
-  id: number;
-  title: string;
-  description: string;
-  language: string;
-  level: Level;
-  status: CourseStatus;
-  sequentialLessons: boolean;
-  teacherId: number | null;
-  lessonCount: number;
-  updatedAt: string;
-}
-
-export interface CourseInput {
-  title: string;
-  description: string;
-  language: string;
-  level: Level;
-  sequentialLessons: boolean;
-}
-
-export interface LessonInput {
-  title: string;
-  content: string;
-  isFreeIntro: boolean;
-  hasHomework: boolean;
-}
-
-export interface OwnStream {
-  id: number;
-  courseId: number;
-  title: string;
-  startsOn: string;
-  endsOn: string;
-  capacity: number;
-  seatsTaken: number;
-}
-
-export interface StreamInput {
-  title: string;
-  startsOn: string;
-  endsOn: string;
-  capacity: number;
-}
-
-export interface OwnLesson {
-  id: number;
-  courseId: number;
-  courseTitle: string;
-  position: number;
-  title: string;
-  content: string;
-  isFreeIntro: boolean;
-  hasHomework: boolean;
-}
-
-export interface ProgressSummary {
-  completed: number;
-  total: number;
-  percent: number;
-}
-
-export interface LessonProgressItem {
-  id: number;
-  position: number;
-  title: string;
-  isFreeIntro: boolean;
-  hasHomework: boolean;
-  completed: boolean;
-  locked: boolean;
-}
-
-export interface CourseProgress {
-  courseId: number;
-  started: boolean;
-  startsOn: string;
-  title: string;
-  sequentialLessons: boolean;
-  progress: ProgressSummary;
-  lessons: LessonProgressItem[];
-}
-
-export interface LessonView {
-  id: number;
-  courseId: number;
-  courseTitle: string;
-  position: number;
-  title: string;
-  content: string;
-  hasHomework: boolean;
-  materials: Material[];
-  completed: boolean;
-  previousLessonId: number | null;
-  nextLessonId: number | null;
-  progress: ProgressSummary;
-  submission: Submission | null;
-}
-
-export interface Submission {
-  comment: string;
-  file: { name: string } | null;
-  submittedAt: string;
-  grade: number | null;
-  feedback: string | null;
-  gradedAt: string | null;
-}
-
-export interface StreamStudent {
-  enrollmentId: number;
-  studentId: number;
-  name: string;
-  email: string;
-  status: 'active' | 'completed';
-  enrolledAt: string;
-  progress: ProgressSummary;
-  homework: { total: number; submitted: number; graded: number };
-}
-
-export interface StreamSubmission extends Submission {
-  id: number;
-  student: { id: number; name: string };
-  lesson: { id: number; position: number; title: string };
-}
+export type StreamStudent = Schemas['StreamStudent'];
+export type StreamSubmission = Schemas['StreamSubmission'];
 
 export type SubmissionFilter = 'all' | 'pending' | 'graded';
-
-export interface GradeInput {
-  grade: number;
-  feedback?: string;
-}

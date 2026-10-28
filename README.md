@@ -29,8 +29,8 @@
 
 Потрібен лише Docker Desktop.
 
-1. Скопіюй `.env.example` у `.env` і за потреби зміни `JWT_SECRET` (щонайменше 32 символи).
-2. Запусти все:
+1. Скопіюйте `.env.example` у `.env` і за потреби змініть `JWT_SECRET` (щонайменше 32 символи).
+2. Запустіть все:
 
    ```bash
    docker compose --profile app up -d --build
@@ -38,13 +38,13 @@
 
    Піднімуться база, API (міграції застосовуються самі) і веб-інтерфейс.
 
-3. Наповни базу демо-даними:
+3. Наповніть базу демо-даними:
 
    ```bash
    docker compose --profile app run --rm -e NODE_ENV=development api node dist/db/seed.js
    ```
 
-4. Відкрий http://localhost:8080.
+4. Відкрийте http://localhost:8080.
 
 Зупинити: `docker compose --profile app down`. Разом із даними: `docker compose --profile app down -v`.
 
@@ -100,6 +100,14 @@ npm run typecheck
 npm run lint
 npm run build
 ```
+
+Типи відповідей клієнта генеруються зі специфікації. Після зміни `openapi/openapi.yaml` виконайте у `client`:
+
+```bash
+npm run api:types
+```
+
+і закомітьте оновлений `src/shared/api/schema.d.ts`. CI (`npm run api:types:check`) падає, якщо файл не збігається зі специфікацією (ADR 0016).
 
 Тести сервера працюють із реальною PostgreSQL, тому Docker із базою має бути запущений. Серед них є тест на паралельні записи на останнє місце.
 
