@@ -31,6 +31,7 @@ import { createFileStorage, type FileStorage } from './shared/storage.js';
 import { requestContext } from './shared/http/requestContext.js';
 import { errorHandler, notFoundHandler } from './shared/problem.js';
 import { createLogger } from './shared/logger.js';
+import { serveClient } from './shared/http/clientApp.js';
 
 export interface AppDeps {
   logger: Logger;
@@ -40,6 +41,7 @@ export interface AppDeps {
   cookieSecure: boolean;
   hasher: PasswordHasher;
   storage: FileStorage;
+  staticDir: string;
 }
 
 const bcryptHasher: PasswordHasher = {
@@ -113,6 +115,8 @@ export function createApp(deps: Partial<AppDeps> = {}): Express {
       enrollmentsRouter({ service: createEnrollmentsService({ db: deps.db }), guards }),
     );
   }
+
+  if (deps.staticDir) serveClient(app, deps.staticDir);
 
   app.use(notFoundHandler);
   app.use(errorHandler(logger));
