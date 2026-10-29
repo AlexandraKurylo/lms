@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../../features/auth/useAuth';
 import { ThemeToggle } from '../ThemeToggle';
@@ -11,7 +11,19 @@ function linkClass({ isActive }: { isActive: boolean }): string {
 export function NavBar() {
   const { user, loading, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const burgerRef = useRef<HTMLButtonElement>(null);
   const closeMenu = () => setMenuOpen(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      setMenuOpen(false);
+      burgerRef.current?.focus();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [menuOpen]);
 
   function leave() {
     closeMenu();
@@ -20,7 +32,7 @@ export function NavBar() {
 
   return (
     <header className={styles.header}>
-      <nav className={styles.nav}>
+      <nav className={styles.nav} aria-label="Головна навігація">
         <Link to="/" className={styles.logo} onClick={closeMenu}>
           <img src="/favicon.svg" alt="" width="32" height="32" className={styles.logoImg} />
           <span className={styles.logoText}>LMS</span>
@@ -71,6 +83,7 @@ export function NavBar() {
         <div className={styles.mobileControls}>
           <ThemeToggle />
           <button
+            ref={burgerRef}
             type="button"
             className={styles.burger}
             aria-label={menuOpen ? 'Закрити меню' : 'Відкрити меню'}

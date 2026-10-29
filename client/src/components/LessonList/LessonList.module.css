@@ -39,7 +39,7 @@
 
 .summary {
   font-size: 0.875rem;
-  color: rgb(var(--c-hinting) / 0.6);
+  color: rgb(var(--c-hinting) / 0.75);
 }
 
 .link {

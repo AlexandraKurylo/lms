@@ -1,3 +1,25 @@
+.skip {
+  position: absolute;
+  left: 1rem;
+  top: 0;
+  z-index: 100;
+  transform: translateY(-120%);
+  border-radius: 0 0 0.5rem 0.5rem;
+  background: rgb(var(--c-stallion));
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: rgb(var(--c-hinting));
+  border: 1px solid rgb(var(--c-crystal));
+}
+
+.skip:focus-visible {
+  transform: translateY(0);
+}
+
+.main:focus {
+  outline: none;
+}
+
 .main {
   margin: 0 auto;
   max-width: 80rem;

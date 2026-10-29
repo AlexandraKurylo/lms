@@ -47,5 +47,5 @@
 }
 
 .locked {
-  color: rgb(var(--c-hinting) / 0.5);
+  color: rgb(var(--c-hinting) / 0.75);
 }

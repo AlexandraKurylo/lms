@@ -158,7 +158,7 @@ ul {
 
 .btnSteel {
   color: #f3fafc;
-  background: linear-gradient(180deg, #5a96a3 0%, #3c7383 55%, #2c5b69 100%);
+  background: linear-gradient(180deg, #4d8795 0%, #36697a 55%, #285563 100%);
   border: 1px solid rgba(205, 218, 221, 0.2);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
@@ -167,7 +167,7 @@ ul {
   text-shadow: 0 1px 1px rgba(15, 25, 28, 0.35);
 }
 .btnSteel:hover {
-  background: linear-gradient(180deg, #6ba7b4 0%, #478295 55%, #336777 100%);
+  background: linear-gradient(180deg, #5c97a4 0%, #407a8b 55%, #2f6070 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.32),
     inset 0 -8px 14px -8px rgba(15, 25, 28, 0.45),
@@ -235,11 +235,16 @@ ul {
   transition: border-color 0.15s ease;
 }
 .field::placeholder {
-  color: rgb(var(--c-hinting) / 0.4);
+  color: rgb(var(--c-hinting) / 0.62);
 }
 .field:focus {
   outline: none;
   border-color: rgb(var(--c-crystal) / 0.5);
+}
+.field:focus-visible,
+.field:focus-within {
+  outline: 2px solid rgb(var(--c-crystal));
+  outline-offset: 2px;
 }
 .field:disabled {
   opacity: 0.4;
@@ -292,4 +297,15 @@ textarea.field {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
