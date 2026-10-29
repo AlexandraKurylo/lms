@@ -1,6 +1,22 @@
 import { Link } from 'react-router-dom';
-import { ServerStatus } from '../../components/ServerStatus';
+import { FeatureCard } from '../../components/FeatureCard';
+import { Reveal } from '../../components/Reveal';
 import styles from './HomePage.module.css';
+
+const FEATURES = [
+  {
+    title: 'Потоки з живими місцями',
+    text: 'Записуйтесь на потік і бачте вільні місця в реальному часі: останнє місце гарантовано дістається одному студентові.',
+  },
+  {
+    title: 'Прогрес без фальші',
+    text: 'Відсоток проходження рахується з позначок про пройдені уроки, тож додайте новий урок, і прогрес лишиться точним.',
+  },
+  {
+    title: 'Зворотний зв’язок від викладача',
+    text: 'Здавайте домашні роботи з файлами й отримуйте оцінку та коментар: усе в одному кабінеті, без зайвих листів.',
+  },
+] as const;
 
 export function HomePage() {
   return (
@@ -20,9 +36,16 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className={`glassPanel ${styles.status}`}>
-        <span className={styles.statusLabel}>Стан сервера</span>
-        <ServerStatus />
+      <section className={styles.features} aria-label="Можливості платформи">
+        {FEATURES.map((feature, index) => (
+          <Reveal
+            key={feature.title}
+            direction={index === 0 ? 'left' : index === 2 ? 'right' : 'up'}
+            delay={index * 120}
+          >
+            <FeatureCard title={feature.title} text={feature.text} />
+          </Reveal>
+        ))}
       </section>
     </div>
   );
