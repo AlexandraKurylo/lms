@@ -14,6 +14,7 @@ const app = createApp({
   storage: createFileStorage(config.UPLOAD_DIR),
   jwtSecret: config.JWT_SECRET,
   cookieSecure: config.COOKIE_SECURE,
+  staticDir: config.STATIC_DIR,
   checkReady: async () => {
     await prisma.$queryRaw`SELECT 1`;
   },
