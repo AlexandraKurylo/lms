@@ -8,5 +8,9 @@ export function ErrorMessage({ error, notFoundText }: { error: unknown; notFound
         ? notFoundText
         : error.message
       : 'Щось пішло не так';
-  return <p className={styles.text}>{text}</p>;
+  return (
+    <p className={styles.text} role="alert">
+      {text}
+    </p>
+  );
 }

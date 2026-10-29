@@ -12,7 +12,7 @@
 
 .status {
   font-size: 0.875rem;
-  color: rgb(var(--c-hinting) / 0.6);
+  color: rgb(var(--c-hinting) / 0.75);
 }
 
 .form {
@@ -70,7 +70,7 @@
 
 .hint {
   font-size: 0.8125rem;
-  color: rgb(var(--c-hinting) / 0.6);
+  color: rgb(var(--c-hinting) / 0.75);
 }
 
 .error {
