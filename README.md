@@ -48,6 +48,10 @@
 
 Зупинити: `docker compose --profile app down`. Разом із даними: `docker compose --profile app down -v`.
 
+## Публічне посилання
+
+Розгорнуту версію можна відкрити тут: https://lms-p949.onrender.com. Демо-акаунти описано нижче. Безкоштовний тариф хостингу засинає без запитів, тому перший запит може тривати близько хвилини; файли, завантажені на сайті, не зберігаються між перезапусками. Розгортання описано в [docs/deploy.md](docs/deploy.md).
+
 ## Демо-акаунти
 
 Пароль усіх акаунтів: `Demo12345!`
@@ -140,3 +144,4 @@ npm run db:restore   # відновлення з найновішої копії
 - API: [openapi/openapi.yaml](openapi/openapi.yaml) (перевірка: `npm run api:lint` у `server`).
 - Помилки повертаються у форматі problem+json (RFC 9457), кожен код описаний в OpenAPI.
 - Архітектурні рішення: [docs/adr](docs/adr/README.md).
+- Розгортання: [docs/deploy.md](docs/deploy.md), вибір хостингу: [ADR 0017](docs/adr/0017-hosting.md).
