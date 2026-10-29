@@ -1,0 +1,1 @@
+export { AssignTeacher } from './AssignTeacher';

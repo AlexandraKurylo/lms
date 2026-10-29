@@ -40,6 +40,11 @@ export function NavBar() {
               Кабінет
             </NavLink>
           )}
+          {user?.role === 'admin' && (
+            <NavLink to="/admin/report" className={linkClass}>
+              Звіти
+            </NavLink>
+          )}
           {!loading &&
             (user ? (
               <>
@@ -107,6 +112,11 @@ export function NavBar() {
             {(user?.role === 'teacher' || user?.role === 'admin') && (
               <NavLink to="/teacher" onClick={closeMenu} className={styles.menuLink}>
                 Кабінет
+              </NavLink>
+            )}
+            {user?.role === 'admin' && (
+              <NavLink to="/admin/report" onClick={closeMenu} className={styles.menuLink}>
+                Звіти
               </NavLink>
             )}
             {!loading &&

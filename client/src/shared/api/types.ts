@@ -39,6 +39,11 @@ export type LessonView = Schemas['LessonView'];
 export type Submission = Schemas['Submission'];
 
 export type StreamStudent = Schemas['StreamStudent'];
+export type AdminTeacher = Schemas['AdminTeacher'];
+export type AdminStream = Schemas['AdminStream'];
+export type StreamReport = Schemas['StreamReport'];
+export type StreamReportStudent = Schemas['StreamReportStudent'];
 export type StreamSubmission = Schemas['StreamSubmission'];
 
 export type SubmissionFilter = 'all' | 'pending' | 'graded';
+

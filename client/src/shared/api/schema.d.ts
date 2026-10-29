@@ -315,6 +315,66 @@ export interface paths {
         patch: operations["assignCourseTeacher"];
         trace?: never;
     };
+    "/admin/teachers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Викладачі платформи
+         * @description Лише адміністратор. Довідник для вибору викладача курсу.
+         */
+        get: operations["listTeachers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/streams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Усі потоки платформи
+         * @description Лише адміністратор. Найновіші потоки першими, не більше 200.
+         */
+        get: operations["listAllStreams"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/streams/{id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Звіт про успішність студентів за потоком
+         * @description Лише адміністратор (ФВ-16). Підсумки потоку та рядок на кожного студента із записом active або completed.
+         */
+        get: operations["getStreamReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/courses": {
         parameters: {
             query?: never;
@@ -1076,6 +1136,48 @@ export interface components {
                 graded: number;
             };
         };
+        AdminTeacher: {
+            id: number;
+            name: string;
+            email: string;
+        };
+        AdminStream: {
+            id: number;
+            title: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            capacity: number;
+            /** @description Зайняті місця (записи active і completed). */
+            seatsTaken: number;
+            course: {
+                id: number;
+                title: string;
+            };
+        };
+        StreamReportStudent: components["schemas"]["StreamStudent"] & {
+            /** @description Середня оцінка за оцінені домашні роботи потоку, один знак після коми. */
+            averageGrade: number | null;
+        };
+        StreamReport: {
+            stream: components["schemas"]["AdminStream"] & {
+                teacher: {
+                    id: number;
+                    name: string;
+                } | null;
+            };
+            summary: {
+                students: number;
+                /** @description Студенти, які пройшли всі уроки курсу. */
+                finished: number;
+                averageProgress: number;
+                homeworkSubmitted: number;
+                homeworkGraded: number;
+                averageGrade: number | null;
+            };
+            students: components["schemas"]["StreamReportStudent"][];
+        };
         StreamSubmission: {
             id: number;
             student: {
@@ -1792,6 +1894,84 @@ export interface operations {
                         id: number;
                         teacherId: number;
                     };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listTeachers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Список викладачів за іменем */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["AdminTeacher"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listAllStreams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Потоки з назвою курсу й кількістю зайнятих місць */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["AdminStream"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getStreamReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Ідентифікатор потоку. */
+                id: components["parameters"]["StreamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Звіт за потоком */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreamReport"];
                 };
             };
             400: components["responses"]["BadRequest"];

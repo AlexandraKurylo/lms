@@ -1,0 +1,31 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem 1.125rem;
+}
+
+.label {
+  font-size: 0.8125rem;
+  color: rgb(var(--c-hinting) / 0.75);
+}
+
+.value {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: rgb(var(--c-hinting) / 0.7);
+}

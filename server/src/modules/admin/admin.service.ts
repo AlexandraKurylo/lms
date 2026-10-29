@@ -1,11 +1,14 @@
 import type { Db } from '../../shared/db.js';
 import { DomainError, notFound } from '../../shared/errors.js';
+import { createAdminReports } from './admin.reports.js';
 
-/** Дії адміністратора над курсами: публікація/зняття й призначення викладача. */
+/** Дії адміністратора: публікація курсів, призначення викладача, довідники й звіт за потоком. */
 export function createAdminService(deps: { db: Db }) {
   const { db } = deps;
 
   return {
+    ...createAdminReports(db),
+
     async setStatus(courseId: number, status: 'draft' | 'published') {
       const course = await db.course.findUnique({
         where: { id: courseId },
