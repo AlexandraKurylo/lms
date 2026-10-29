@@ -1,0 +1,17 @@
+.card {
+  height: 100%;
+  padding: 1.5rem;
+}
+
+.title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: rgb(var(--c-crystal));
+}
+
+.text {
+  margin-top: 0.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: rgb(var(--c-hinting) / 0.75);
+}

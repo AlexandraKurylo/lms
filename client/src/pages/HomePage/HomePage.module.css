@@ -1,15 +1,19 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 3rem;
+  padding-bottom: 3rem;
 }
 
 .hero {
   display: flex;
-  max-width: 44rem;
+  max-width: 46rem;
+  margin: 0 auto;
   flex-direction: column;
+  align-items: center;
   gap: 1.25rem;
-  padding: 2rem 0;
+  padding: 2.5rem 0 0;
+  text-align: center;
 }
 
 .title {
@@ -27,19 +31,21 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.75rem;
 }
 
-.status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem 1.25rem;
-  max-width: 44rem;
-  padding: 1rem 1.25rem;
-  font-size: 0.875rem;
+.features {
+  display: grid;
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
 }
 
-.statusLabel {
-  color: rgb(var(--c-hinting) / 0.6);
+@media (min-width: 768px) {
+  .features {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
