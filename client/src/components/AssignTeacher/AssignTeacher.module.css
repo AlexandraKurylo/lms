@@ -1,0 +1,16 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+
+.hint {
+  font-size: 0.875rem;
+  color: rgb(var(--c-hinting) / 0.7);
+}
+
+.ok {
+  font-size: 0.875rem;
+  color: rgb(var(--c-hinting) / 0.85);
+}

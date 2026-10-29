@@ -1,0 +1,1 @@
+export { AdminReportPage } from './AdminReportPage';

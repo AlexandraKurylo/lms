@@ -66,3 +66,10 @@
   flex-direction: column;
   gap: 0.75rem;
 }
+
+.adminTools {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+}

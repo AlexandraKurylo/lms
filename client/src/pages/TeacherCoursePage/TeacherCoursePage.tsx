@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { AssignTeacher } from '../../components/AssignTeacher';
 import { BackLink } from '../../components/BackLink';
 import { CourseForm } from '../../components/CourseForm';
 import { ErrorMessage } from '../../components/ErrorMessage';
@@ -51,7 +52,10 @@ export function TeacherCoursePage() {
           </Link>
         </div>
         {user?.role === 'admin' ? (
-          <PublishControl courseId={course.id} status={course.status} />
+          <div className={styles.adminTools}>
+            <PublishControl courseId={course.id} status={course.status} />
+            <AssignTeacher courseId={course.id} teacherId={course.teacherId} />
+          </div>
         ) : (
           course.status === 'draft' && (
             <p className={styles.note}>Курс опублікує адміністратор, коли в ньому будуть уроки.</p>

@@ -593,6 +593,92 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /admin/teachers:
+    get:
+      tags:
+        - Admin
+      operationId: listTeachers
+      security:
+        - cookieAuth: []
+      summary: Викладачі платформи
+      description: Лише адміністратор. Довідник для вибору викладача курсу.
+      responses:
+        '200':
+          description: Список викладачів за іменем
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminTeacher'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/streams:
+    get:
+      tags:
+        - Admin
+      operationId: listAllStreams
+      security:
+        - cookieAuth: []
+      summary: Усі потоки платформи
+      description: Лише адміністратор. Найновіші потоки першими, не більше 200.
+      responses:
+        '200':
+          description: Потоки з назвою курсу й кількістю зайнятих місць
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminStream'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/streams/{id}/report:
+    get:
+      tags:
+        - Admin
+      operationId: getStreamReport
+      security:
+        - cookieAuth: []
+      summary: Звіт про успішність студентів за потоком
+      description: Лише адміністратор (ФВ-16). Підсумки потоку та рядок на кожного студента із записом active або completed.
+      parameters:
+        - $ref: '#/components/parameters/StreamId'
+      responses:
+        '200':
+          description: Звіт за потоком
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /courses:
     get:
       tags:
@@ -2542,6 +2628,124 @@ components:
               type: integer
             graded:
               type: integer
+    AdminTeacher:
+      type: object
+      required:
+        - id
+        - name
+        - email
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+    AdminStream:
+      type: object
+      required:
+        - id
+        - title
+        - startsOn
+        - endsOn
+        - capacity
+        - seatsTaken
+        - course
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        startsOn:
+          type: string
+          format: date
+        endsOn:
+          type: string
+          format: date
+        capacity:
+          type: integer
+        seatsTaken:
+          type: integer
+          description: Зайняті місця (записи active і completed).
+        course:
+          type: object
+          required:
+            - id
+            - title
+          properties:
+            id:
+              type: integer
+            title:
+              type: string
+    StreamReportStudent:
+      allOf:
+        - $ref: '#/components/schemas/StreamStudent'
+        - type: object
+          required:
+            - averageGrade
+          properties:
+            averageGrade:
+              type:
+                - number
+                - 'null'
+              description: Середня оцінка за оцінені домашні роботи потоку, один знак після коми.
+    StreamReport:
+      type: object
+      required:
+        - stream
+        - summary
+        - students
+      properties:
+        stream:
+          allOf:
+            - $ref: '#/components/schemas/AdminStream'
+            - type: object
+              required:
+                - teacher
+              properties:
+                teacher:
+                  type:
+                    - object
+                    - 'null'
+                  required:
+                    - id
+                    - name
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+        summary:
+          type: object
+          required:
+            - students
+            - finished
+            - averageProgress
+            - homeworkSubmitted
+            - homeworkGraded
+            - averageGrade
+          properties:
+            students:
+              type: integer
+            finished:
+              type: integer
+              description: Студенти, які пройшли всі уроки курсу.
+            averageProgress:
+              type: integer
+              minimum: 0
+              maximum: 100
+            homeworkSubmitted:
+              type: integer
+            homeworkGraded:
+              type: integer
+            averageGrade:
+              type:
+                - number
+                - 'null'
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/StreamReportStudent'
     StreamSubmission:
       type: object
       required:

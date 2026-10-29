@@ -12,6 +12,7 @@ import { MyEnrollmentsPage } from '../pages/MyEnrollmentsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { StudentLessonPage } from '../pages/StudentLessonPage';
+import { AdminReportPage } from '../pages/AdminReportPage';
 import { TeacherCoursePage } from '../pages/TeacherCoursePage';
 import { TeacherLessonPage } from '../pages/TeacherLessonPage';
 import { TeacherStreamPage } from '../pages/TeacherStreamPage';
@@ -88,6 +89,14 @@ export function App() {
           element={
             <ProtectedRoute roles={['teacher', 'admin']}>
               <TeacherLessonPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/report"
+          element={
+            <ProtectedRoute roles={['admin']}>
+              <AdminReportPage />
             </ProtectedRoute>
           }
         />
