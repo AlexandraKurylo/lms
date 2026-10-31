@@ -29,4 +29,4 @@
 | 0014 | [Idempotency-Key для запису на потік](0014-idempotency-key.md)                   |
 | 0015 | [Резервні копії: pg_dump, архів файлів, перевірка відновленням](0015-backups.md) |
 | 0016 | [Типи клієнта генеруються з OpenAPI](0016-openapi-client-types.md)               |
-| 0017 | [Хостинг: Railway](0017-hosting.md)                                              |
+| 0017 | [Хостинг: Render](0017-hosting.md)                                               |
