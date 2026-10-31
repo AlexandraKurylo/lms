@@ -115,6 +115,21 @@ npm run api:types
 
 Тести сервера працюють із реальною PostgreSQL, тому Docker із базою має бути запущений. Серед них є тест на паралельні записи на останнє місце.
 
+### Наскрізний тест (Playwright)
+
+Сценарій у `e2e/tests/enrollment.spec.ts` проходить шлях студента в справжньому браузері: реєстрація, пошук курсу, запис на потік, проходження двох уроків, прогрес 100 %, а другий студент бачить, що місць немає. Курс, уроки й потік створюються через API від імені викладача й адміністратора з сиду, тому тест не залежить від випадкових демо-даних.
+
+Перед запуском потрібні база з міграціями та сидом і зібраний клієнт:
+
+```bash
+docker compose up -d db
+cd server && npm ci && npm run db:deploy && npm run db:seed && npm run build
+cd ../client && npm ci && npm run build
+cd ../e2e && npm install && npm run install:browser && npm test
+```
+
+Playwright сам запускає API (`server/dist`) з роздачею `client/dist` і читає змінні з кореневого `.env`. Щоб перевірити вже розгорнутий сайт, задайте `E2E_BASE_URL`. У CI тест виконує окреме завдання `e2e`.
+
 ## Структура
 
 ```
@@ -124,6 +139,7 @@ server/    API: Express, Prisma, тести (vitest + supertest)
   prisma/                 схема й міграції
 client/    React-застосунок
   src/pages, src/components, src/features
+e2e/       наскрізні тести (Playwright)
 openapi/   опис API (OpenAPI 3.1)
 docs/adr/  архітектурні рішення
 ```
