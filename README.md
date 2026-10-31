@@ -4,8 +4,6 @@
 
 Курси з уроками, матеріалами та відстеженням прогресу. Потоки мають обмежену кількість місць, запис на них — конкурентна операція: останнє місце дістається лише одному студенту.
 
-Репозиторій: https://github.com/AlexandraKurylo/lms
-
 ## Стек технологій
 
 | Шар         | Технології                                 | Призначення                                          |
@@ -181,15 +179,15 @@ Playwright сам запускає API (`server/dist`) з роздачею `clie
 ## Структура
 
 ```
-server/    API: Express, Prisma, тести (vitest + supertest)
+server/                   API: Express, Prisma, тести (vitest + supertest)
   src/modules/<модуль>/   routes → service → repo
   src/db/                 сид і дані для нього
   prisma/                 схема й міграції
-client/    React-застосунок
+client/                   React-застосунок
   src/pages, src/components, src/features
-e2e/       наскрізні тести (Playwright)
-openapi/   опис API (OpenAPI 3.1)
-docs/adr/  архітектурні рішення
+e2e/                      наскрізні тести (Playwright)
+openapi/                  опис API (OpenAPI 3.1)
+docs/adr/                 архітектурні рішення
 ```
 
 ## Резервне копіювання
